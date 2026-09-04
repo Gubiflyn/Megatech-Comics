@@ -1,0 +1,30 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: bff-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/350a9453-1175-49a5-883a-06bcf231cc7f/v2.0}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://login.microsoftonline.com/350a9453-1175-49a5-883a-06bcf231cc7f/discovery/v2.0/keys}
+
+app:
+  security:
+    jwt:
+      expected-audience: ${JWT_EXPECTED_AUDIENCE:c1fd62c5-9ce2-4d7a-9a99-52ab63238adb}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
