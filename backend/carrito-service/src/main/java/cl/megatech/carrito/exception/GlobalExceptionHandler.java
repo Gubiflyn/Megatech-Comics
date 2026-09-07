@@ -23,6 +23,26 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(StockNoDisponibleException.class)
+    public ResponseEntity<Map<String, Object>> manejarStockNoDisponible(
+            StockNoDisponibleException ex) {
+
+        return construirRespuesta(
+                HttpStatus.CONFLICT,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(ServicioInventarioException.class)
+    public ResponseEntity<Map<String, Object>> manejarServicioInventario(
+            ServicioInventarioException ex) {
+
+        return construirRespuesta(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ex.getMessage()
+        );
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> manejarArgumentoInvalido(
             IllegalArgumentException ex) {
@@ -51,11 +71,13 @@ public class GlobalExceptionHandler {
         Map<String, Object> respuesta = new LinkedHashMap<>();
 
         respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", 400);
+        respuesta.put("status", HttpStatus.BAD_REQUEST.value());
         respuesta.put("error", "Datos inválidos");
         respuesta.put("errores", errores);
 
-        return ResponseEntity.badRequest().body(respuesta);
+        return ResponseEntity
+                .badRequest()
+                .body(respuesta);
     }
 
     private ResponseEntity<Map<String, Object>> construirRespuesta(

@@ -5,6 +5,7 @@ import cl.megatech.carrito.dto.AgregarItemRequest;
 import cl.megatech.carrito.model.Carrito;
 import cl.megatech.carrito.service.CarritoService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,12 +31,17 @@ public class CarritoController {
     @PostMapping("/{usuarioId}/items")
     public ResponseEntity<Carrito> agregarItem(
             @PathVariable String usuarioId,
-            @Valid @RequestBody AgregarItemRequest request) {
+            @Valid @RequestBody AgregarItemRequest request,
+            @RequestHeader(
+                    value = HttpHeaders.AUTHORIZATION,
+                    required = false
+            ) String authorizationHeader) {
 
         return ResponseEntity.ok(
                 carritoService.agregarItem(
                         usuarioId,
-                        request
+                        request,
+                        authorizationHeader
                 )
         );
     }
@@ -45,13 +51,18 @@ public class CarritoController {
             @PathVariable String usuarioId,
             @PathVariable Long productoId,
             @Valid @RequestBody
-            ActualizarCantidadRequest request) {
+            ActualizarCantidadRequest request,
+            @RequestHeader(
+                    value = HttpHeaders.AUTHORIZATION,
+                    required = false
+            ) String authorizationHeader) {
 
         return ResponseEntity.ok(
                 carritoService.actualizarCantidad(
                         usuarioId,
                         productoId,
-                        request.getCantidad()
+                        request.getCantidad(),
+                        authorizationHeader
                 )
         );
     }

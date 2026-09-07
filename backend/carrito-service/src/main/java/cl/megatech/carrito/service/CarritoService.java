@@ -1,5 +1,6 @@
 package cl.megatech.carrito.service;
 
+import cl.megatech.carrito.client.InventarioClient;
 import cl.megatech.carrito.dto.AgregarItemRequest;
 import cl.megatech.carrito.exception.RecursoNoEncontradoException;
 import cl.megatech.carrito.model.Carrito;
@@ -12,12 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class CarritoService {
 
     private final CarritoRepository carritoRepository;
+    private final InventarioClient inventarioClient;
 
-    public CarritoService(CarritoRepository carritoRepository) {
+    public CarritoService(
+            CarritoRepository carritoRepository,
+            InventarioClient inventarioClient) {
+
         this.carritoRepository = carritoRepository;
+        this.inventarioClient = inventarioClient;
     }
 
     public Carrito obtenerPorUsuario(String usuarioId) {
+
         return carritoRepository.findByUsuarioId(usuarioId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
@@ -29,7 +36,8 @@ public class CarritoService {
     @Transactional
     public Carrito agregarItem(
             String usuarioId,
-            AgregarItemRequest request) {
+            AgregarItemRequest request,
+            String authorizationHeader) {
 
         Carrito carrito = carritoRepository
                 .findByUsuarioId(usuarioId)
@@ -44,12 +52,24 @@ public class CarritoService {
                 .findFirst()
                 .orElse(null);
 
+        int cantidadFinal = request.getCantidad();
+
         if (existente != null) {
-            existente.setCantidad(
-                    existente.getCantidad()
-                            + request.getCantidad()
-            );
+            cantidadFinal += existente.getCantidad();
+        }
+
+        inventarioClient.validarStock(
+                request.getProductoId(),
+                cantidadFinal,
+                authorizationHeader
+        );
+
+        if (existente != null) {
+
+            existente.setCantidad(cantidadFinal);
+
         } else {
+
             ItemCarrito nuevoItem = new ItemCarrito();
 
             nuevoItem.setProductoId(
@@ -70,13 +90,20 @@ public class CarritoService {
     public Carrito actualizarCantidad(
             String usuarioId,
             Long productoId,
-            Integer cantidad) {
+            Integer cantidad,
+            String authorizationHeader) {
 
         Carrito carrito = obtenerPorUsuario(usuarioId);
 
         ItemCarrito item = buscarItem(
                 carrito,
                 productoId
+        );
+
+        inventarioClient.validarStock(
+                productoId,
+                cantidad,
+                authorizationHeader
         );
 
         item.setCantidad(cantidad);
