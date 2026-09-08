@@ -18,7 +18,7 @@ public class InventarioClient {
     private final RestClient restClient;
 
     public InventarioClient(
-            @Value("${services.inventario.url:http://localhost:8083}")
+            @Value("${services.inventario.url:http://localhost:8084}")
             String inventarioUrl) {
 
         restClient = RestClient.builder()

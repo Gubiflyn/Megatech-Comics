@@ -17,7 +17,7 @@ public class PedidosClient {
     private final RestClient restClient;
 
     public PedidosClient(
-            @Value("${services.pedidos.url:http://localhost:8085}")
+            @Value("${services.pedidos.url:http://localhost:8086}")
             String pedidosUrl) {
 
         this.restClient = RestClient.builder()

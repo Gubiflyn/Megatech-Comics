@@ -15,7 +15,7 @@ public class CarritoClient {
     private final RestClient restClient;
 
     public CarritoClient(
-            @Value("${services.carrito.url:http://localhost:8084}")
+            @Value("${services.carrito.url:http://localhost:8085}")
             String carritoUrl) {
 
         restClient = RestClient.builder()
