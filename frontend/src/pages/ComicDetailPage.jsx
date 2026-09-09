@@ -1,21 +1,71 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
-import { comics } from '../data/comics'
 import { useCart } from '../context/CartContext'
+
+const API_URL =
+  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function ComicDetailPage() {
   const { id } = useParams()
-
   const { agregarItem } = useCart()
 
+  const [comic, setComic] = useState(null)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
   const [agregado, setAgregado] = useState(false)
 
-  const comic = comics.find(
-    (item) => item.id === Number(id),
-  )
+  useEffect(() => {
+    const cargarComic = async () => {
+      try {
+        setCargando(true)
+        setError('')
 
-  if (!comic) {
+        const response = await fetch(`${API_URL}/${id}`)
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('El cómic solicitado no existe.')
+          }
+
+          throw new Error(
+            'No fue posible obtener el cómic desde el servidor.',
+          )
+        }
+
+        const data = await response.json()
+
+        setComic(data)
+      } catch (err) {
+        setError(
+          err.message ||
+            'Ocurrió un error al cargar el cómic.',
+        )
+      } finally {
+        setCargando(false)
+      }
+    }
+
+    cargarComic()
+  }, [id])
+
+  if (cargando) {
+    return (
+      <main className="page-container comic-not-found">
+        <span className="page-label">
+          CARGANDO
+        </span>
+
+        <h1>Cargando cómic...</h1>
+
+        <p>
+          Estamos consultando la información del catálogo.
+        </p>
+      </main>
+    )
+  }
+
+  if (error || !comic) {
     return (
       <main className="page-container comic-not-found">
         <span className="page-label">
@@ -25,7 +75,8 @@ function ComicDetailPage() {
         <h1>Cómic no encontrado</h1>
 
         <p>
-          El cómic que intentas consultar no existe.
+          {error ||
+            'El cómic que intentas consultar no existe.'}
         </p>
 
         <Link
@@ -76,13 +127,15 @@ function ComicDetailPage() {
 
             <h1>{comic.titulo}</h1>
 
-            <p>{comic.edicion}</p>
+            <p>
+              {comic.edicion || 'Sin especificar'}
+            </p>
           </div>
         </div>
 
         <div className="detail-info">
           <span className="page-label">
-            {comic.genero}
+            {comic.genero || 'Sin género'}
           </span>
 
           <h1>{comic.titulo}</h1>
@@ -94,7 +147,9 @@ function ComicDetailPage() {
           <div className="detail-properties">
             <div>
               <span>Tipo</span>
-              <strong>{comic.tipo}</strong>
+              <strong>
+                {comic.tipo || 'Sin especificar'}
+              </strong>
             </div>
 
             <div>
@@ -142,8 +197,8 @@ function ComicDetailPage() {
           )}
 
           <p className="integration-note">
-            Posteriormente el stock será validado
-            mediante inventario-service.
+            Información obtenida desde el catálogo
+            conectado a AWS RDS.
           </p>
         </div>
       </section>
