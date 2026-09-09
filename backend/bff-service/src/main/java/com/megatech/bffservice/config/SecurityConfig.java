@@ -51,22 +51,26 @@ public class SecurityConfig {
                         sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Health check público
-                        .requestMatchers("/actuator/health").permitAll()
+        // Health check público
+        .requestMatchers("/actuator/health").permitAll()
 
-                        // Catálogo público para permitir navegación de la tienda
-                        .requestMatchers(
-        HttpMethod.GET,
-        "/api/catalogo",
-        "/api/catalogo/**"
-).permitAll()
+        // Permitir preflight CORS sin autenticación
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // El resto de las APIs requiere autenticación
-                        .requestMatchers("/api/**").authenticated()
+        // Catálogo público para permitir navegación de la tienda
+        .requestMatchers(
+                HttpMethod.GET,
+                "/api/catalogo",
+                "/api/catalogo/**"
+        ).permitAll()
 
-                        // Cualquier otra ruta también requiere autenticación
-                        .anyRequest().authenticated()
-                )
+        // El resto de las APIs requiere autenticación
+        .requestMatchers("/api/**").authenticated()
+
+        // Cualquier otra ruta también requiere autenticación
+        .anyRequest().authenticated()
+)
+                
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder())
