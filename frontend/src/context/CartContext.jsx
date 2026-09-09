@@ -17,7 +17,7 @@ import { loginRequest } from '../auth/msalConfig'
 const CartContext = createContext(null)
 
 const API_URL =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/carritos'
+  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/carrito'
 
 export function CartProvider({ children }) {
   const { instance, accounts } = useMsal()
@@ -28,9 +28,6 @@ export function CartProvider({ children }) {
   const [error, setError] = useState('')
 
   const account = accounts[0]
-
-  const usuarioId =
-    account?.localAccountId || null
 
   const obtenerAccessToken = useCallback(async () => {
     if (!isAuthenticated || !account) {
@@ -63,8 +60,7 @@ export function CartProvider({ children }) {
           Authorization: `Bearer ${accessToken}`,
           ...(options.body
             ? {
-                'Content-Type':
-                  'application/json',
+                'Content-Type': 'application/json',
               }
             : {}),
           ...options.headers,
@@ -101,7 +97,7 @@ export function CartProvider({ children }) {
 
   const cargarCarrito = useCallback(
     async () => {
-      if (!isAuthenticated || !usuarioId) {
+      if (!isAuthenticated || !account) {
         setItems([])
         setCargando(false)
         setError('')
@@ -113,11 +109,7 @@ export function CartProvider({ children }) {
         setError('')
 
         const carrito =
-          await realizarPeticion(
-            `${API_URL}/${encodeURIComponent(
-              usuarioId,
-            )}`,
-          )
+          await realizarPeticion(API_URL)
 
         setItems(carrito?.items || [])
       } catch (err) {
@@ -133,6 +125,7 @@ export function CartProvider({ children }) {
         )
 
         setItems([])
+
         setError(
           err.message ||
             'No fue posible cargar el carrito.',
@@ -142,9 +135,9 @@ export function CartProvider({ children }) {
       }
     },
     [
+      account,
       isAuthenticated,
       realizarPeticion,
-      usuarioId,
     ],
   )
 
@@ -161,9 +154,7 @@ export function CartProvider({ children }) {
 
       const carrito =
         await realizarPeticion(
-          `${API_URL}/${encodeURIComponent(
-            usuarioId,
-          )}/items`,
+          `${API_URL}/items`,
           {
             method: 'POST',
             body: JSON.stringify({
@@ -204,9 +195,7 @@ export function CartProvider({ children }) {
 
       const carrito =
         await realizarPeticion(
-          `${API_URL}/${encodeURIComponent(
-            usuarioId,
-          )}/items/${productoId}`,
+          `${API_URL}/items/${productoId}`,
           {
             method: 'PUT',
             body: JSON.stringify({
@@ -241,9 +230,7 @@ export function CartProvider({ children }) {
 
       const carrito =
         await realizarPeticion(
-          `${API_URL}/${encodeURIComponent(
-            usuarioId,
-          )}/items/${productoId}`,
+          `${API_URL}/items/${productoId}`,
           {
             method: 'DELETE',
           },
@@ -272,9 +259,7 @@ export function CartProvider({ children }) {
       setError('')
 
       await realizarPeticion(
-        `${API_URL}/${encodeURIComponent(
-          usuarioId,
-        )}`,
+        API_URL,
         {
           method: 'DELETE',
         },
@@ -299,7 +284,7 @@ export function CartProvider({ children }) {
   const cantidadTotal = useMemo(() => {
     return items.reduce(
       (total, item) =>
-        total + item.cantidad,
+        total + (item.cantidad || 0),
       0,
     )
   }, [items])
@@ -308,7 +293,6 @@ export function CartProvider({ children }) {
     items,
     cargando,
     error,
-    usuarioId,
     agregarItem,
     actualizarCantidad,
     eliminarItem,
