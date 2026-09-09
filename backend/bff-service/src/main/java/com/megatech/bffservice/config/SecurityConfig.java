@@ -55,7 +55,11 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
 
                         // Catálogo público para permitir navegación de la tienda
-                        .requestMatchers(HttpMethod.GET, "/api/catalogo").permitAll()
+                        .requestMatchers(
+        HttpMethod.GET,
+        "/api/catalogo",
+        "/api/catalogo/**"
+).permitAll()
 
                         // El resto de las APIs requiere autenticación
                         .requestMatchers("/api/**").authenticated()
