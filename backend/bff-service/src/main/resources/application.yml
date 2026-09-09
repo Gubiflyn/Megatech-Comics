@@ -8,13 +8,13 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/350a9453-1175-49a5-883a-06bcf231cc7f/v2.0}
-          jwk-set-uri: ${JWT_JWK_SET_URI:https://login.microsoftonline.com/350a9453-1175-49a5-883a-06bcf231cc7f/discovery/v2.0/keys}
+          issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/f296b836-9dcb-49b9-ab6c-8e74696608f6/v2.0}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://login.microsoftonline.com/f296b836-9dcb-49b9-ab6c-8e74696608f6/discovery/v2.0/keys}
 
 app:
   security:
     jwt:
-      expected-audience: ${JWT_EXPECTED_AUDIENCE:c1fd62c5-9ce2-4d7a-9a99-52ab63238adb}
+      expected-audience: ${JWT_EXPECTED_AUDIENCE:79e27497-9b28-4c3c-8e33-47b3de560ce1}
   webclient:
     connect-timeout-ms: ${DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
     response-timeout-seconds: ${DOWNSTREAM_RESPONSE_TIMEOUT_SECONDS:10}
