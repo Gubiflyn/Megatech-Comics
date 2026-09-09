@@ -1,8 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { MsalProvider } from '@azure/msal-react'
 
 import App from './App.jsx'
+import { msalInstance } from './auth/msalConfig.js'
 
 import {
   CartProvider,
@@ -18,12 +20,14 @@ createRoot(
   document.getElementById('root'),
 ).render(
   <StrictMode>
-    <BrowserRouter>
-      <CartProvider>
-        <OrderProvider>
-          <App />
-        </OrderProvider>
-      </CartProvider>
-    </BrowserRouter>
+    <MsalProvider instance={msalInstance}>
+      <BrowserRouter>
+        <CartProvider>
+          <OrderProvider>
+            <App />
+          </OrderProvider>
+        </CartProvider>
+      </BrowserRouter>
+    </MsalProvider>
   </StrictMode>,
 )
