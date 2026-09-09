@@ -5,6 +5,7 @@ import com.megatech.bffservice.security.JwtAudienceValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -46,62 +47,103 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(sm ->
+                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
+                        // Health check público
                         .requestMatchers("/actuator/health").permitAll()
+
+                        // Catálogo público para permitir navegación de la tienda
+                        .requestMatchers(HttpMethod.GET, "/api/catalogo").permitAll()
+
+                        // El resto de las APIs requiere autenticación
                         .requestMatchers("/api/**").authenticated()
-                        .anyRequest().authenticated())
+
+                        // Cualquier otra ruta también requiere autenticación
+                        .anyRequest().authenticated()
+                )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder())
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                                .jwtAuthenticationConverter(
+                                        jwtAuthenticationConverter()
+                                )
+                        )
+                )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(globalExceptionHandler)
-                        .accessDeniedHandler(globalExceptionHandler));
+                        .accessDeniedHandler(globalExceptionHandler)
+                );
 
         return http.build();
     }
 
     /**
-     * Builds the JWT decoder against the JWK set URI and chains the standard
-     * issuer/signature validation with the custom audience check, since
-     * Spring Security does not validate "aud" out of the box.
+     * Configura la validación del JWT.
+     * Se valida issuer, firma, expiración y audience.
      */
     @Bean
     public JwtDecoder jwtDecoder() {
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        NimbusJwtDecoder jwtDecoder =
+                NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
-        OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuerUri);
-        OAuth2TokenValidator<Jwt> audienceValidator = new JwtAudienceValidator(expectedAudience);
-        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+        OAuth2TokenValidator<Jwt> issuerValidator =
+                JwtValidators.createDefaultWithIssuer(issuerUri);
+
+        OAuth2TokenValidator<Jwt> audienceValidator =
+                new JwtAudienceValidator(expectedAudience);
+
+        jwtDecoder.setJwtValidator(
+                new DelegatingOAuth2TokenValidator<>(
+                        issuerValidator,
+                        audienceValidator
+                )
+        );
 
         return jwtDecoder;
     }
 
-    /**
-     * Azure AD splits permissions across two claims: "roles" (app roles, a JSON
-     * array) and "scp" (delegated scopes, a single space-separated string).
-     * This converter maps both into Spring Security authorities.
-     */
+    
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(this::extractAuthorities);
+        JwtAuthenticationConverter converter =
+                new JwtAuthenticationConverter();
+
+        converter.setJwtGrantedAuthoritiesConverter(
+                this::extractAuthorities
+        );
+
         return converter;
     }
 
     private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        Collection<GrantedAuthority> authorities = new ArrayList<>();
+        Collection<GrantedAuthority> authorities =
+                new ArrayList<>();
 
-        List<String> roles = jwt.getClaimAsStringList("roles");
+        List<String> roles =
+                jwt.getClaimAsStringList("roles");
+
         if (roles != null) {
-            roles.forEach(role -> authorities.add(new SimpleGrantedAuthority("ROLE_" + role)));
+            roles.forEach(role ->
+                    authorities.add(
+                            new SimpleGrantedAuthority(
+                                    "ROLE_" + role
+                            )
+                    )
+            );
         }
 
-        String scopes = jwt.getClaimAsString("scp");
+        String scopes =
+                jwt.getClaimAsString("scp");
+
         if (scopes != null && !scopes.isBlank()) {
             for (String scope : scopes.split(" ")) {
-                authorities.add(new SimpleGrantedAuthority("SCOPE_" + scope));
+                authorities.add(
+                        new SimpleGrantedAuthority(
+                                "SCOPE_" + scope
+                        )
+                );
             }
         }
 
