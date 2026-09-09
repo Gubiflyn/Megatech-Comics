@@ -6,9 +6,9 @@ spring:
     name: usuarios-service
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:usuarios_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:root}
+    url: ${USUARIOS_DB_URL:jdbc:mysql://localhost:3306/usuarios_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${USUARIOS_DB_USERNAME:root}
+    password: ${USUARIOS_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
