@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
 import {
   Link,
   useNavigate,
 } from 'react-router-dom'
-
-import { comics } from '../data/comics'
 
 import {
   useCart,
@@ -14,7 +17,8 @@ import {
   useOrders,
 } from '../context/OrderContext'
 
-const USUARIO_TEMPORAL = 'usuario-demo'
+const CATALOGO_API =
+  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function formatearPrecio(precio) {
   return new Intl.NumberFormat('es-CL', {
@@ -28,7 +32,9 @@ function CheckoutPage() {
 
   const {
     items,
-    vaciarCarrito,
+    cargando: cargandoCarrito,
+    error: errorCarrito,
+    cargarCarrito,
   } = useCart()
 
   const {
@@ -36,11 +42,19 @@ function CheckoutPage() {
     procesarPago,
   } = useOrders()
 
+  const [comics, setComics] = useState([])
+  const [cargandoCatalogo, setCargandoCatalogo] =
+    useState(true)
+  const [errorCatalogo, setErrorCatalogo] =
+    useState('')
+
   const [metodoPago, setMetodoPago] =
     useState('WEBPAY_SIMULADO')
 
-  const [resultadoSimulado, setResultadoSimulado] =
-    useState('APROBADO')
+  const [
+    resultadoSimulado,
+    setResultadoSimulado,
+  ] = useState('APROBADO')
 
   const [procesando, setProcesando] =
     useState(false)
@@ -48,13 +62,55 @@ function CheckoutPage() {
   const [error, setError] =
     useState('')
 
+  useEffect(() => {
+    const cargarCatalogo = async () => {
+      try {
+        setCargandoCatalogo(true)
+        setErrorCatalogo('')
+
+        const response =
+          await fetch(CATALOGO_API)
+
+        if (!response.ok) {
+          throw new Error(
+            `Error consultando catálogo: ${response.status}`,
+          )
+        }
+
+        const data =
+          await response.json()
+
+        setComics(
+          Array.isArray(data)
+            ? data
+            : [],
+        )
+      } catch (err) {
+        console.error(
+          'Error cargando catálogo en checkout:',
+          err,
+        )
+
+        setErrorCatalogo(
+          'No fue posible obtener la información de los productos.',
+        )
+      } finally {
+        setCargandoCatalogo(false)
+      }
+    }
+
+    cargarCatalogo()
+  }, [])
+
   const itemsCompletos = useMemo(() => {
     return items
       .map((item) => {
-        const comic = comics.find(
-          (producto) =>
-            producto.id === item.productoId,
-        )
+        const comic =
+          comics.find(
+            (producto) =>
+              Number(producto.id) ===
+              Number(item.productoId),
+          )
 
         if (!comic) {
           return null
@@ -66,17 +122,23 @@ function CheckoutPage() {
         }
       })
       .filter(Boolean)
-  }, [items])
+  }, [items, comics])
 
-  const total = itemsCompletos.reduce(
-    (acumulado, item) =>
-      acumulado +
-      item.comic.precio * item.cantidad,
-    0,
-  )
+  const total = useMemo(() => {
+    return itemsCompletos.reduce(
+      (acumulado, item) =>
+        acumulado +
+        Number(item.comic.precio) *
+          Number(item.cantidad),
+      0,
+    )
+  }, [itemsCompletos])
 
-  const confirmarCompra = () => {
-    if (itemsCompletos.length === 0) {
+  const confirmarCompra = async () => {
+    if (
+      itemsCompletos.length === 0 ||
+      procesando
+    ) {
       return
     }
 
@@ -85,48 +147,55 @@ function CheckoutPage() {
       setError('')
 
       /*
-       * En la integración real:
+       * 1. El BFF obtiene el usuario
+       * desde el oid del Access Token.
        *
-       * POST /api/pedidos/{usuarioId}
-       *
-       * El backend obtiene el carrito,
-       * valida inventario y crea el pedido.
+       * 2. pedidos-service obtiene
+       * el carrito, valida stock,
+       * descuenta inventario,
+       * crea el pedido y vacía
+       * el carrito en el backend.
        */
+      const pedido =
+        await crearPedido()
 
-      const pedido = crearPedido(
-        USUARIO_TEMPORAL,
-        items,
-      )
+      if (!pedido?.id) {
+        throw new Error(
+          'El servidor no devolvió un pedido válido.',
+        )
+      }
 
       /*
-       * El pedidos-service real vacía
-       * carrito-service después de crear
-       * correctamente el pedido.
+       * 3. Procesamos el pago real
+       * mediante pagos-service.
        */
-
-      vaciarCarrito()
-
-      /*
-       * Luego:
-       *
-       * POST /api/pagos/pedido/{pedidoId}
-       *
-       * {
-       *   metodoPago,
-       *   aprobarPago
-       * }
-       */
-
-      procesarPago(
+      await procesarPago(
         pedido.id,
         metodoPago,
-        resultadoSimulado === 'APROBADO',
+        resultadoSimulado ===
+          'APROBADO',
       )
 
+      /*
+       * 4. Sincronizamos el contexto
+       * local porque pedidos-service
+       * ya vació el carrito real.
+       */
+      await cargarCarrito()
+
+      /*
+       * 5. Mostramos el pedido
+       * recién creado.
+       */
       navigate(
         `/pedidos?creado=${pedido.id}`,
       )
     } catch (err) {
+      console.error(
+        'Error completando compra:',
+        err,
+      )
+
       setError(
         err.message ||
           'No fue posible completar la compra.',
@@ -136,17 +205,68 @@ function CheckoutPage() {
     }
   }
 
+  if (
+    cargandoCarrito ||
+    cargandoCatalogo
+  ) {
+    return (
+      <main className="checkout-page">
+        <section className="checkout-empty">
+          <span>⌛</span>
+
+          <h1>Cargando checkout</h1>
+
+          <p>
+            Estamos obteniendo la información
+            de tu carrito.
+          </p>
+        </section>
+      </main>
+    )
+  }
+
+  if (
+    errorCarrito ||
+    errorCatalogo
+  ) {
+    return (
+      <main className="checkout-page">
+        <section className="checkout-empty">
+          <span>⚠️</span>
+
+          <h1>
+            No pudimos cargar el checkout
+          </h1>
+
+          <p>
+            {errorCarrito ||
+              errorCatalogo}
+          </p>
+
+          <Link
+            to="/carrito"
+            className="primary-button"
+          >
+            Volver al carrito
+          </Link>
+        </section>
+      </main>
+    )
+  }
+
   if (itemsCompletos.length === 0) {
     return (
       <main className="checkout-page">
         <section className="checkout-empty">
           <span>🛒</span>
 
-          <h1>No hay productos para comprar</h1>
+          <h1>
+            No hay productos para comprar
+          </h1>
 
           <p>
-            Agrega algún cómic al carrito antes de
-            continuar.
+            Agrega algún cómic al carrito
+            antes de continuar.
           </p>
 
           <Link
@@ -177,19 +297,21 @@ function CheckoutPage() {
         <h1>Finalizar compra</h1>
 
         <p>
-          Revisa tu pedido y selecciona un
-          método de pago.
+          Revisa tu pedido y selecciona
+          un método de pago.
         </p>
       </div>
 
       <div className="checkout-layout">
         <section className="checkout-main">
+
           <div className="checkout-section">
             <div className="checkout-section-title">
               <span>01</span>
 
               <div>
                 <h2>Productos</h2>
+
                 <p>
                   Resumen de los cómics que
                   comprarás.
@@ -199,7 +321,10 @@ function CheckoutPage() {
 
             <div className="checkout-products">
               {itemsCompletos.map(
-                ({ comic, cantidad }) => (
+                ({
+                  comic,
+                  cantidad,
+                }) => (
                   <article
                     key={comic.id}
                     className="checkout-product"
@@ -210,7 +335,8 @@ function CheckoutPage() {
                       </strong>
 
                       <span>
-                        {comic.edicion}
+                        {comic.edicion ||
+                          'Sin especificar'}
                       </span>
                     </div>
 
@@ -224,8 +350,12 @@ function CheckoutPage() {
 
                       <strong>
                         {formatearPrecio(
-                          comic.precio *
-                            cantidad,
+                          Number(
+                            comic.precio,
+                          ) *
+                            Number(
+                              cantidad,
+                            ),
                         )}
                       </strong>
                     </div>
@@ -240,11 +370,13 @@ function CheckoutPage() {
               <span>02</span>
 
               <div>
-                <h2>Método de pago</h2>
+                <h2>
+                  Método de pago
+                </h2>
 
                 <p>
-                  Selecciona cómo deseas pagar
-                  tu pedido.
+                  Selecciona cómo deseas
+                  pagar tu pedido.
                 </p>
               </div>
             </div>
@@ -276,7 +408,10 @@ function CheckoutPage() {
                 </span>
 
                 <div>
-                  <strong>Tarjeta</strong>
+                  <strong>
+                    Tarjeta
+                  </strong>
+
                   <span>
                     Pago mediante tarjeta
                   </span>
@@ -372,8 +507,9 @@ function CheckoutPage() {
                 </h2>
 
                 <p>
-                  pagos-service permite simular
-                  un pago aprobado o rechazado.
+                  pagos-service permite
+                  simular un pago aprobado
+                  o rechazado.
                 </p>
               </div>
             </div>
@@ -392,6 +528,7 @@ function CheckoutPage() {
                     'APROBADO',
                   )
                 }
+                disabled={procesando}
               >
                 ✓ Simular aprobado
               </button>
@@ -409,6 +546,7 @@ function CheckoutPage() {
                     'RECHAZADO',
                   )
                 }
+                disabled={procesando}
               >
                 ✕ Simular rechazado
               </button>
@@ -434,8 +572,14 @@ function CheckoutPage() {
 
             <strong>
               {itemsCompletos.reduce(
-                (cantidad, item) =>
-                  cantidad + item.cantidad,
+                (
+                  cantidad,
+                  item,
+                ) =>
+                  cantidad +
+                  Number(
+                    item.cantidad,
+                  ),
                 0,
               )}
             </strong>

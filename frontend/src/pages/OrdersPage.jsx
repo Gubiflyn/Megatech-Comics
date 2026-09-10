@@ -1,12 +1,23 @@
-import { Link } from 'react-router-dom'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
-import { comics } from '../data/comics'
+import { Link } from 'react-router-dom'
 
 import {
   useOrders,
 } from '../context/OrderContext'
 
+const CATALOGO_API =
+  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
+
 function formatearFecha(fecha) {
+  if (!fecha) {
+    return 'Fecha no disponible'
+  }
+
   return new Intl.DateTimeFormat(
     'es-CL',
     {
@@ -14,12 +25,6 @@ function formatearFecha(fecha) {
       timeStyle: 'short',
     },
   ).format(new Date(fecha))
-}
-
-function obtenerComic(productoId) {
-  return comics.find(
-    (comic) => comic.id === productoId,
-  )
 }
 
 function EstadoBadge({ estado }) {
@@ -34,8 +39,13 @@ function EstadoBadge({ estado }) {
   }
 
   return (
-    <span className={`order-status ${clase}`}>
-      {estado.replaceAll('_', ' ')}
+    <span
+      className={`order-status ${clase}`}
+    >
+      {(estado || 'PENDIENTE').replaceAll(
+        '_',
+        ' ',
+      )}
     </span>
   )
 }
@@ -43,8 +53,115 @@ function EstadoBadge({ estado }) {
 function OrdersPage() {
   const {
     pedidos,
+    cargando: cargandoPedidos,
+    error: errorPedidos,
     obtenerPagosPedido,
   } = useOrders()
+
+  const [comics, setComics] =
+    useState([])
+
+  const [
+    cargandoCatalogo,
+    setCargandoCatalogo,
+  ] = useState(true)
+
+  const [
+    errorCatalogo,
+    setErrorCatalogo,
+  ] = useState('')
+
+  useEffect(() => {
+    const cargarCatalogo = async () => {
+      try {
+        setCargandoCatalogo(true)
+        setErrorCatalogo('')
+
+        const response =
+          await fetch(CATALOGO_API)
+
+        if (!response.ok) {
+          throw new Error(
+            `Error consultando catálogo: ${response.status}`,
+          )
+        }
+
+        const data =
+          await response.json()
+
+        setComics(
+          Array.isArray(data)
+            ? data
+            : [],
+        )
+      } catch (err) {
+        console.error(
+          'Error cargando catálogo en Mis pedidos:',
+          err,
+        )
+
+        setErrorCatalogo(
+          'No fue posible obtener la información de los productos.',
+        )
+      } finally {
+        setCargandoCatalogo(false)
+      }
+    }
+
+    cargarCatalogo()
+  }, [])
+
+  const comicsPorId = useMemo(() => {
+    const mapa = new Map()
+
+    comics.forEach((comic) => {
+      mapa.set(
+        Number(comic.id),
+        comic,
+      )
+    })
+
+    return mapa
+  }, [comics])
+
+  if (
+    cargandoPedidos ||
+    cargandoCatalogo
+  ) {
+    return (
+      <main className="orders-page">
+        <section className="orders-header">
+          <span className="page-label">
+            MI CUENTA
+          </span>
+
+          <h1>Mis pedidos</h1>
+
+          <p>
+            Cargando tus compras...
+          </p>
+        </section>
+      </main>
+    )
+  }
+
+  if (errorPedidos) {
+    return (
+      <main className="orders-page">
+        <section className="orders-header">
+          <span className="page-label">
+            ERROR
+          </span>
+
+          <h1>
+            No pudimos cargar tus pedidos
+          </h1>
+
+          <p>{errorPedidos}</p>
+        </section>
+      </main>
+    )
+  }
 
   if (pedidos.length === 0) {
     return (
@@ -102,7 +219,10 @@ function OrdersPage() {
         </div>
 
         <div className="orders-count">
-          <strong>{pedidos.length}</strong>
+          <strong>
+            {pedidos.length}
+          </strong>
+
           <span>
             {pedidos.length === 1
               ? 'pedido'
@@ -111,13 +231,26 @@ function OrdersPage() {
         </div>
       </section>
 
+      {errorCatalogo && (
+        <p>
+          {errorCatalogo}
+        </p>
+      )}
+
       <section className="orders-list">
         {pedidos.map((pedido) => {
           const pagosPedido =
-            obtenerPagosPedido(pedido.id)
+            obtenerPagosPedido(
+              pedido.id,
+            )
 
           const ultimoPago =
             pagosPedido[0]
+
+          const itemsPedido =
+            Array.isArray(pedido.items)
+              ? pedido.items
+              : []
 
           return (
             <article
@@ -143,16 +276,21 @@ function OrdersPage() {
               </header>
 
               <div className="order-products">
-                {pedido.items.map(
+                {itemsPedido.map(
                   (item) => {
                     const comic =
-                      obtenerComic(
-                        item.productoId,
+                      comicsPorId.get(
+                        Number(
+                          item.productoId,
+                        ),
                       )
 
                     return (
                       <div
-                        key={item.id}
+                        key={
+                          item.id ??
+                          `${pedido.id}-${item.productoId}`
+                        }
                         className="order-product"
                       >
                         <div>
@@ -163,8 +301,13 @@ function OrdersPage() {
                           </strong>
 
                           <span>
-                            Producto #
-                            {item.productoId}
+                            {comic
+                              ? `${comic.edicion || 'Sin edición'}${
+                                  comic.tomo
+                                    ? ` · Tomo ${comic.tomo}`
+                                    : ''
+                                }`
+                              : `Producto #${item.productoId}`}
                           </span>
                         </div>
 
@@ -209,6 +352,7 @@ function OrdersPage() {
                 ) : (
                   <div>
                     <span>Pago</span>
+
                     <strong>
                       Sin procesar
                     </strong>
@@ -217,14 +361,17 @@ function OrdersPage() {
 
                 {ultimoPago && (
                   <div>
-                    <span>Método</span>
+                    <span>
+                      Método
+                    </span>
 
                     <strong>
                       {ultimoPago.metodoPago
-                        .replaceAll(
-                          '_',
-                          ' ',
-                        )}
+                        ? ultimoPago.metodoPago.replaceAll(
+                            '_',
+                            ' ',
+                          )
+                        : 'Sin especificar'}
                     </strong>
                   </div>
                 )}
