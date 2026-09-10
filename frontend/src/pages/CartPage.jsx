@@ -1,7 +1,10 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { comics } from '../data/comics'
 import { useCart } from '../context/CartContext'
+
+const CATALOGO_API =
+  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function formatearPrecio(precio) {
   return new Intl.NumberFormat('es-CL', {
@@ -13,35 +16,212 @@ function formatearPrecio(precio) {
 function CartPage() {
   const {
     items,
+    cargando: cargandoCarrito,
+    error: errorCarrito,
     actualizarCantidad,
     eliminarItem,
     vaciarCarrito,
   } = useCart()
 
-  const itemsCompletos = items
-    .map((item) => {
-      const comic = comics.find(
-        (producto) =>
-          producto.id === item.productoId,
+  const [comics, setComics] = useState([])
+  const [cargandoCatalogo, setCargandoCatalogo] =
+    useState(true)
+  const [errorCatalogo, setErrorCatalogo] =
+    useState('')
+  const [procesando, setProcesando] =
+    useState(false)
+
+  useEffect(() => {
+    const cargarCatalogo = async () => {
+      try {
+        setCargandoCatalogo(true)
+        setErrorCatalogo('')
+
+        const response = await fetch(CATALOGO_API)
+
+        if (!response.ok) {
+          throw new Error(
+            `Error consultando catálogo: ${response.status}`,
+          )
+        }
+
+        const data = await response.json()
+
+        setComics(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error(
+          'Error cargando catálogo para carrito:',
+          err,
+        )
+
+        setErrorCatalogo(
+          'No fue posible obtener la información de los productos.',
+        )
+      } finally {
+        setCargandoCatalogo(false)
+      }
+    }
+
+    cargarCatalogo()
+  }, [])
+
+  const itemsCompletos = useMemo(() => {
+    return items
+      .map((item) => {
+        const comic = comics.find(
+          (producto) =>
+            Number(producto.id) ===
+            Number(item.productoId),
+        )
+
+        if (!comic) {
+          return null
+        }
+
+        return {
+          ...item,
+          comic,
+        }
+      })
+      .filter(Boolean)
+  }, [items, comics])
+
+  const subtotal = useMemo(() => {
+    return itemsCompletos.reduce(
+      (total, item) =>
+        total +
+        Number(item.comic.precio) *
+          Number(item.cantidad),
+      0,
+    )
+  }, [itemsCompletos])
+
+  const cambiarCantidad = async (
+    productoId,
+    cantidad,
+  ) => {
+    if (cantidad < 1 || procesando) {
+      return
+    }
+
+    try {
+      setProcesando(true)
+
+      await actualizarCantidad(
+        productoId,
+        cantidad,
       )
+    } catch (err) {
+      console.error(
+        'Error cambiando cantidad:',
+        err,
+      )
+    } finally {
+      setProcesando(false)
+    }
+  }
 
-      if (!comic) {
-        return null
-      }
+  const quitarProducto = async (
+    productoId,
+  ) => {
+    if (procesando) {
+      return
+    }
 
-      return {
-        ...item,
-        comic,
-      }
-    })
-    .filter(Boolean)
+    try {
+      setProcesando(true)
 
-  const subtotal = itemsCompletos.reduce(
-    (total, item) =>
-      total +
-      item.comic.precio * item.cantidad,
-    0,
-  )
+      await eliminarItem(productoId)
+    } catch (err) {
+      console.error(
+        'Error eliminando producto:',
+        err,
+      )
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const limpiarCarrito = async () => {
+    if (procesando) {
+      return
+    }
+
+    try {
+      setProcesando(true)
+
+      await vaciarCarrito()
+    } catch (err) {
+      console.error(
+        'Error vaciando carrito:',
+        err,
+      )
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  if (
+    cargandoCarrito ||
+    cargandoCatalogo
+  ) {
+    return (
+      <main className="cart-page">
+        <section className="cart-header">
+          <span className="page-label">
+            TU COMPRA
+          </span>
+
+          <h1>Carrito</h1>
+
+          <p>
+            Cargando los productos de tu carrito...
+          </p>
+        </section>
+      </main>
+    )
+  }
+
+  if (errorCarrito) {
+    return (
+      <main className="cart-page">
+        <section className="cart-header">
+          <span className="page-label">
+            ERROR
+          </span>
+
+          <h1>No pudimos cargar tu carrito</h1>
+
+          <p>{errorCarrito}</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (errorCatalogo) {
+    return (
+      <main className="cart-page">
+        <section className="cart-header">
+          <span className="page-label">
+            ERROR
+          </span>
+
+          <h1>
+            No pudimos cargar los productos
+          </h1>
+
+          <p>{errorCatalogo}</p>
+
+          <Link
+            to="/catalogo"
+            className="primary-button"
+          >
+            Volver al catálogo
+          </Link>
+        </section>
+      </main>
+    )
+  }
 
   if (itemsCompletos.length === 0) {
     return (
@@ -100,9 +280,12 @@ function CartPage() {
         <button
           type="button"
           className="clear-cart-button"
-          onClick={vaciarCarrito}
+          onClick={limpiarCarrito}
+          disabled={procesando}
         >
-          Vaciar carrito
+          {procesando
+            ? 'Procesando...'
+            : 'Vaciar carrito'}
         </button>
       </section>
 
@@ -111,7 +294,8 @@ function CartPage() {
           {itemsCompletos.map(
             ({ comic, cantidad }) => {
               const totalItem =
-                comic.precio * cantidad
+                Number(comic.precio) *
+                Number(cantidad)
 
               return (
                 <article
@@ -160,8 +344,11 @@ function CartPage() {
                         type="button"
                         className="remove-item-button"
                         onClick={() =>
-                          eliminarItem(comic.id)
+                          quitarProducto(
+                            comic.id,
+                          )
                         }
+                        disabled={procesando}
                         aria-label={`Eliminar ${comic.titulo}`}
                       >
                         ✕
@@ -173,13 +360,14 @@ function CartPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            actualizarCantidad(
+                            cambiarCantidad(
                               comic.id,
                               cantidad - 1,
                             )
                           }
                           disabled={
-                            cantidad <= 1
+                            cantidad <= 1 ||
+                            procesando
                           }
                         >
                           −
@@ -192,11 +380,12 @@ function CartPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            actualizarCantidad(
+                            cambiarCantidad(
                               comic.id,
                               cantidad + 1,
                             )
                           }
+                          disabled={procesando}
                         >
                           +
                         </button>
@@ -237,7 +426,8 @@ function CartPage() {
             <strong>
               {itemsCompletos.reduce(
                 (total, item) =>
-                  total + item.cantidad,
+                  total +
+                  Number(item.cantidad),
                 0,
               )}
             </strong>
@@ -270,7 +460,7 @@ function CartPage() {
           <Link
             to="/checkout"
             className="checkout-button"
-            >
+          >
             Continuar compra
           </Link>
 

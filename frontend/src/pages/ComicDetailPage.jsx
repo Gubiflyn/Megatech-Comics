@@ -15,6 +15,9 @@ function ComicDetailPage() {
   const [error, setError] = useState('')
   const [agregado, setAgregado] = useState(false)
 
+  const [agregando, setAgregando] = useState(false)
+  const [errorCarrito, setErrorCarrito] = useState('')
+
   useEffect(() => {
     const cargarComic = async () => {
       try {
@@ -95,14 +98,32 @@ function ComicDetailPage() {
       currency: 'CLP',
     }).format(comic.precio)
 
-  const manejarAgregar = () => {
-    agregarItem(comic.id, 1)
-
-    setAgregado(true)
-
-    setTimeout(() => {
+  const manejarAgregar = async () => {
+    try {
+      setAgregando(true)
       setAgregado(false)
-    }, 2000)
+      setErrorCarrito('')
+
+      await agregarItem(comic.id, 1)
+
+      setAgregado(true)
+
+      setTimeout(() => {
+        setAgregado(false)
+      }, 2000)
+    } catch (err) {
+      console.error(
+        'Error al agregar el cómic al carrito:',
+        err,
+      )
+
+      setErrorCarrito(
+        err.message ||
+          'No fue posible agregar el cómic al carrito.',
+      )
+    } finally {
+      setAgregando(false)
+    }
   }
 
   return (
@@ -147,6 +168,7 @@ function ComicDetailPage() {
           <div className="detail-properties">
             <div>
               <span>Tipo</span>
+
               <strong>
                 {comic.tipo || 'Sin especificar'}
               </strong>
@@ -154,6 +176,7 @@ function ComicDetailPage() {
 
             <div>
               <span>Edición</span>
+
               <strong>
                 {comic.edicion || 'Sin especificar'}
               </strong>
@@ -161,11 +184,13 @@ function ComicDetailPage() {
 
             <div>
               <span>Tomo</span>
+
               <strong>{comic.tomo || '-'}</strong>
             </div>
 
             <div>
               <span>Género</span>
+
               <strong>
                 {comic.genero || 'Sin especificar'}
               </strong>
@@ -185,8 +210,11 @@ function ComicDetailPage() {
               type="button"
               className="add-cart-button"
               onClick={manejarAgregar}
+              disabled={agregando}
             >
-              🛒 Agregar al carrito
+              {agregando
+                ? 'Agregando...'
+                : '🛒 Agregar al carrito'}
             </button>
           </div>
 
@@ -194,6 +222,12 @@ function ComicDetailPage() {
             <div className="cart-success">
               ✓ Cómic agregado correctamente al carrito.
             </div>
+          )}
+
+          {errorCarrito && (
+            <p>
+              {errorCarrito}
+            </p>
           )}
 
           <p className="integration-note">
