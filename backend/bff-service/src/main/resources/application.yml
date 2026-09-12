@@ -1,0 +1,41 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: bff-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:https://login.microsoftonline.com/f296b836-9dcb-49b9-ab6c-8e74696608f6/v2.0}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://login.microsoftonline.com/f296b836-9dcb-49b9-ab6c-8e74696608f6/discovery/v2.0/keys}
+
+app:
+  security:
+    jwt:
+      expected-audience: ${JWT_EXPECTED_AUDIENCE:79e27497-9b28-4c3c-8e33-47b3de560ce1}
+  webclient:
+    connect-timeout-ms: ${DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
+    response-timeout-seconds: ${DOWNSTREAM_RESPONSE_TIMEOUT_SECONDS:10}
+  services:
+    usuarios-url: ${USUARIOS_SERVICE_URL:http://localhost:8081}
+    catalogo-url: ${CATALOGO_SERVICE_URL:http://localhost:8082}
+    editoriales-url: ${EDITORIALES_SERVICE_URL:http://localhost:8083}
+    inventario-url: ${INVENTARIO_SERVICE_URL:http://localhost:8084}
+    carrito-url: ${CARRITO_SERVICE_URL:http://localhost:8085}
+    pedidos-url: ${PEDIDOS_SERVICE_URL:http://localhost:8086}
+    pagos-url: ${PAGOS_SERVICE_URL:http://localhost:8087}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
