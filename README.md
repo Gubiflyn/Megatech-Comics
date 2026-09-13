@@ -3,18 +3,18 @@ Megatech-Comics
 Sistema de e-commerce para una tienda de cómics, desarrollado como proyecto de evaluación de la asignatura DSY1107 – Desarrollo Cloud Native I. El proyecto implementa la arquitectura base exigida por la pauta ("Pedidos360"): autenticación federada con Azure AD, un backend de microservicios en Spring Boot orquestado por un BFF, y despliegue en infraestructura cloud (AWS).
 
 Qué hace el sistema
-Permite a cualquier visitante navegar el catálogo de cómics sin necesidad de iniciar sesión (listado, búsqueda, filtro por género/tipo, detalle de cada título).
-Permite a usuarios de staff (personal de la tienda) autenticarse con su cuenta corporativa de Microsoft Entra ID y acceder a su perfil.
-Gestiona carrito de compra, creación de pedidos y procesamiento de pagos (simulado), todo protegido detrás de autenticación.
-Gestiona el catálogo de productos (cómics), sus editoriales/autores asociados, y el inventario/stock disponible por producto.
-Centraliza todo el tráfico del frontend hacia el backend a través de un Backend For Frontend (BFF), que valida la identidad del usuario antes de reenviar cualquier solicitud a los microservicios internos.
+- Permite a cualquier visitante navegar el catálogo de cómics sin necesidad de iniciar sesión (listado, búsqueda, filtro por género/tipo, detalle de cada título).
+- Permite a usuarios de staff (personal de la tienda) autenticarse con su cuenta corporativa de Microsoft Entra ID y acceder a su perfil.
+- Gestiona carrito de compra, creación de pedidos y procesamiento de pagos (simulado), todo protegido detrás de autenticación.
+- Gestiona el catálogo de productos (cómics), sus editoriales/autores asociados, y el inventario/stock disponible por producto.
+- Centraliza todo el tráfico del frontend hacia el backend a través de un Backend For Frontend (BFF), que valida la identidad del usuario antes de reenviar cualquier solicitud a los microservicios internos.
 Cómo responde a los requisitos de la evaluación
-Requisito de la pauta	Cómo se implementó
-Frontend con autenticación federada	React + MSAL (@azure/msal-react), autenticado contra un tenant de Microsoft Entra ID (Azure AD). (La pauta sugería Angular; se usó React con aprobación del docente, dado el conocimiento previo del equipo con este framework.)
-Backend en microservicios con Spring Boot	8 microservicios independientes, cada uno con su propio modelo de datos y base de datos dedicada.
-BFF que valida el JWT recibido del IDaaS	bff-service valida issuer, firma (contra el JWKS de Azure AD), expiración y audience en cada request antes de reenviarla.
-Backend desplegado en instancias cloud, protegido por API Gateway	Los 8 microservicios corren en una instancia EC2 (AWS), gestionados como servicios systemd. Un API Gateway HTTP de AWS expone el sistema al exterior, con un JWT Authorizer nativo que valida los tokens de Azure AD antes de que la petición llegue siquiera al BFF.
-Integración con base de datos cloud	MySQL en Amazon RDS, con un esquema/base de datos separado por microservicio (aislamiento de datos entre dominios).
+  Requisito de la pauta	Cómo se implementó
+- Frontend con autenticación federada	React + MSAL (@azure/msal-react), autenticado contra un tenant de Microsoft Entra ID (Azure AD). (La pauta sugería Angular; se usó React con aprobación del docente, dado el conocimiento previo del equipo con este framework.)
+- Backend en microservicios con Spring Boot	8 microservicios independientes, cada uno con su propio modelo de datos y base de datos dedicada.
+- BFF que valida el JWT recibido del IDaaS	bff-service valida issuer, firma (contra el JWKS de Azure AD), expiración y audience en cada request antes de reenviarla.
+- Backend desplegado en instancias cloud, protegido por API Gateway	Los 8 microservicios corren en una instancia EC2 (AWS), gestionados como servicios systemd. Un API Gateway HTTP de AWS expone el sistema al exterior, con un JWT Authorizer nativo que valida los tokens de Azure AD antes de que la petición llegue siquiera al BFF.
+- Integración con base de datos cloud	MySQL en Amazon RDS, con un esquema/base de datos separado por microservicio (aislamiento de datos entre dominios).
 .gitignore configurado	Configurado a nivel de backend/ y frontend/, excluyendo artefactos de build, credenciales (.env) y estado de Terraform.
 Arquitectura
 React (MSAL)
