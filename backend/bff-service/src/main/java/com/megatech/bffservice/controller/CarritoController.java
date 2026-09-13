@@ -3,6 +3,7 @@ package com.megatech.bffservice.controller;
 import com.megatech.bffservice.dto.carrito.ActualizarCantidadRequest;
 import com.megatech.bffservice.dto.carrito.AgregarItemRequest;
 import com.megatech.bffservice.dto.carrito.CarritoDTO;
+import com.megatech.bffservice.security.JwtUsuarioIdResolver;
 import com.megatech.bffservice.service.CarritoService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,6 @@ public class CarritoController {
     }
 
     private String oidDe(Jwt jwt) {
-        return jwt.getClaimAsString("oid");
+        return JwtUsuarioIdResolver.resolver(jwt);
     }
 }

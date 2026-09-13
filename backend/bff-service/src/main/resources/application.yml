@@ -15,6 +15,10 @@ app:
   security:
     jwt:
       expected-audience: ${JWT_EXPECTED_AUDIENCE:79e27497-9b28-4c3c-8e33-47b3de560ce1}
+    local-jwt:
+      secret: ${LOCAL_JWT_SECRET:un-default-de-desarrollo-de-al-menos-32-caracteres}
+      issuer: ${LOCAL_JWT_ISSUER:https://megatech-comics-local}
+      expiration-minutes: ${LOCAL_JWT_EXPIRATION_MINUTES:60}
   webclient:
     connect-timeout-ms: ${DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
     response-timeout-seconds: ${DOWNSTREAM_RESPONSE_TIMEOUT_SECONDS:10}

@@ -13,6 +13,9 @@ import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
 import OrdersPage from './pages/OrdersPage'
 import ProfilePage from './pages/ProfilePage'
+import ClienteAuthPage from './pages/ClienteAuthPage'
+import ClientePerfilPage from './pages/ClientePerfilPage'
+import AccessSelectorPage from './pages/AccessSelectorPage'
 
 function App() {
   return (
@@ -53,6 +56,21 @@ function App() {
         <Route
           path="/perfil"
           element={<ProfilePage />}
+        />
+
+        <Route
+          path="/cuenta-cliente"
+          element={<ClienteAuthPage />}
+        />
+
+        <Route
+          path="/perfil-cliente"
+          element={<ClientePerfilPage />}
+        />
+
+        <Route
+          path="/acceso"
+          element={<AccessSelectorPage />}
         />
       </Routes>
 

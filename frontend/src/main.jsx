@@ -14,20 +14,28 @@ import {
   OrderProvider,
 } from './context/OrderContext.jsx'
 
+import {
+  ClienteAuthProvider,
+} from './context/ClienteAuthContext.jsx'
+
 import './index.css'
 
-createRoot(
-  document.getElementById('root'),
-).render(
-  <StrictMode>
-    <MsalProvider instance={msalInstance}>
-      <BrowserRouter>
-        <CartProvider>
-          <OrderProvider>
-            <App />
-          </OrderProvider>
-        </CartProvider>
-      </BrowserRouter>
-    </MsalProvider>
-  </StrictMode>,
-)
+msalInstance.initialize().then(() => {
+  createRoot(
+    document.getElementById('root'),
+  ).render(
+    <StrictMode>
+      <MsalProvider instance={msalInstance}>
+        <ClienteAuthProvider>
+          <BrowserRouter>
+            <CartProvider>
+              <OrderProvider>
+                <App />
+              </OrderProvider>
+            </CartProvider>
+          </BrowserRouter>
+        </ClienteAuthProvider>
+      </MsalProvider>
+    </StrictMode>,
+  )
+})

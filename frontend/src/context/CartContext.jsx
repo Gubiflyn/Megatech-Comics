@@ -7,113 +7,35 @@ import {
   useState,
 } from 'react'
 
-import {
-  useIsAuthenticated,
-  useMsal,
-} from '@azure/msal-react'
-
-import { loginRequest } from '../auth/msalConfig'
+import apiClient from '../api/apiClient'
 
 const CartContext = createContext(null)
 
-const API_URL =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/carrito'
+const API_URL = `${
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8080'
+}/api/carrito`
 
 export function CartProvider({ children }) {
-  const { instance, accounts } = useMsal()
-  const isAuthenticated = useIsAuthenticated()
-
   const [items, setItems] = useState([])
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
 
-  const account = accounts[0]
-
-  const obtenerAccessToken = useCallback(async () => {
-    if (!isAuthenticated || !account) {
-      throw new Error(
-        'Debes iniciar sesión para utilizar el carrito.',
-      )
-    }
-
-    const response =
-      await instance.acquireTokenSilent({
-        ...loginRequest,
-        account,
-      })
-
-    return response.accessToken
-  }, [
-    account,
-    instance,
-    isAuthenticated,
-  ])
-
-  const realizarPeticion = useCallback(
-    async (url, options = {}) => {
-      const accessToken =
-        await obtenerAccessToken()
-
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          ...(options.body
-            ? {
-                'Content-Type': 'application/json',
-              }
-            : {}),
-          ...options.headers,
-        },
-      })
-
-      if (response.status === 204) {
-        return null
-      }
-
-      let data = null
-
-      try {
-        data = await response.json()
-      } catch {
-        data = null
-      }
-
-      if (!response.ok) {
-        const requestError = new Error(
-          data?.message ||
-            `Error HTTP ${response.status}`,
-        )
-
-        requestError.status = response.status
-
-        throw requestError
-      }
-
-      return data
-    },
-    [obtenerAccessToken],
-  )
-
   const cargarCarrito = useCallback(
     async () => {
-      if (!isAuthenticated || !account) {
-        setItems([])
-        setCargando(false)
-        setError('')
-        return
-      }
-
       try {
         setCargando(true)
         setError('')
 
-        const carrito =
-          await realizarPeticion(API_URL)
+        const { data: carrito } =
+          await apiClient.get(API_URL)
 
         setItems(carrito?.items || [])
       } catch (err) {
-        if (err.status === 404) {
+        if (
+          err.response?.status === 404 ||
+          err.response?.status === 401
+        ) {
           setItems([])
           setError('')
           return
@@ -127,18 +49,14 @@ export function CartProvider({ children }) {
         setItems([])
 
         setError(
-          err.message ||
+          err.response?.data?.message ||
             'No fue posible cargar el carrito.',
         )
       } finally {
         setCargando(false)
       }
     },
-    [
-      account,
-      isAuthenticated,
-      realizarPeticion,
-    ],
+    [],
   )
 
   useEffect(() => {
@@ -152,16 +70,10 @@ export function CartProvider({ children }) {
     try {
       setError('')
 
-      const carrito =
-        await realizarPeticion(
+      const { data: carrito } =
+        await apiClient.post(
           `${API_URL}/items`,
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              productoId,
-              cantidad,
-            }),
-          },
+          { productoId, cantidad },
         )
 
       setItems(carrito?.items || [])
@@ -174,7 +86,7 @@ export function CartProvider({ children }) {
       )
 
       setError(
-        err.message ||
+        err.response?.data?.message ||
           'No fue posible agregar el producto.',
       )
 
@@ -193,15 +105,10 @@ export function CartProvider({ children }) {
     try {
       setError('')
 
-      const carrito =
-        await realizarPeticion(
+      const { data: carrito } =
+        await apiClient.put(
           `${API_URL}/items/${productoId}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify({
-              cantidad,
-            }),
-          },
+          { cantidad },
         )
 
       setItems(carrito?.items || [])
@@ -214,7 +121,7 @@ export function CartProvider({ children }) {
       )
 
       setError(
-        err.message ||
+        err.response?.data?.message ||
           'No fue posible actualizar la cantidad.',
       )
 
@@ -228,12 +135,9 @@ export function CartProvider({ children }) {
     try {
       setError('')
 
-      const carrito =
-        await realizarPeticion(
+      const { data: carrito } =
+        await apiClient.delete(
           `${API_URL}/items/${productoId}`,
-          {
-            method: 'DELETE',
-          },
         )
 
       setItems(carrito?.items || [])
@@ -246,7 +150,7 @@ export function CartProvider({ children }) {
       )
 
       setError(
-        err.message ||
+        err.response?.data?.message ||
           'No fue posible eliminar el producto.',
       )
 
@@ -258,12 +162,7 @@ export function CartProvider({ children }) {
     try {
       setError('')
 
-      await realizarPeticion(
-        API_URL,
-        {
-          method: 'DELETE',
-        },
-      )
+      await apiClient.delete(API_URL)
 
       setItems([])
     } catch (err) {
@@ -273,7 +172,7 @@ export function CartProvider({ children }) {
       )
 
       setError(
-        err.message ||
+        err.response?.data?.message ||
           'No fue posible vaciar el carrito.',
       )
 

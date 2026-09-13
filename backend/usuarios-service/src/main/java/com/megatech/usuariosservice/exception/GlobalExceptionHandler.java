@@ -27,6 +27,11 @@ public class GlobalExceptionHandler {
         return construirRespuesta(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
+        return construirRespuesta(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidacion(MethodArgumentNotValidException ex) {
         List<ErrorResponse.CampoError> errores = ex.getBindingResult().getFieldErrors().stream()

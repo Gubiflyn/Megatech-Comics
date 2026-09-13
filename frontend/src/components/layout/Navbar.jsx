@@ -5,22 +5,16 @@ import {
 } from '@azure/msal-react'
 
 import { useCart } from '../../context/CartContext'
-import { loginRequest } from '../../auth/msalConfig'
+import { useClienteAuth } from '../../context/ClienteAuthContext'
 
 function Navbar() {
   const { cantidadTotal } = useCart()
   const { instance, accounts } = useMsal()
   const isAuthenticated = useIsAuthenticated()
+  const { cliente, logout: logoutCliente } =
+    useClienteAuth()
 
-  const iniciarSesion = async () => {
-    try {
-      await instance.loginRedirect(loginRequest)
-    } catch (error) {
-      console.error('Error al iniciar sesión:', error)
-    }
-  }
-
-  const cerrarSesion = async () => {
+  const cerrarSesionStaff = async () => {
     try {
       await instance.logoutRedirect({
         postLogoutRedirectUri: 'http://localhost:5173',
@@ -93,19 +87,35 @@ function Navbar() {
               <button
                 type="button"
                 className="login-button"
-                onClick={cerrarSesion}
+                onClick={cerrarSesionStaff}
+              >
+                Cerrar sesión
+              </button>
+            </>
+          ) : cliente ? (
+            <>
+              <NavLink
+                to="/perfil-cliente"
+                className="login-button"
+              >
+                {cliente.nombreCompleto || 'Mi cuenta'}
+              </NavLink>
+
+              <button
+                type="button"
+                className="login-button"
+                onClick={logoutCliente}
               >
                 Cerrar sesión
               </button>
             </>
           ) : (
-            <button
-              type="button"
+            <NavLink
+              to="/acceso"
               className="login-button"
-              onClick={iniciarSesion}
             >
               Iniciar sesión
-            </button>
+            </NavLink>
           )}
         </div>
       </div>

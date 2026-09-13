@@ -2,6 +2,7 @@ package com.megatech.bffservice.controller;
 
 import com.megatech.bffservice.dto.pedidos.ActualizarEstadoRequest;
 import com.megatech.bffservice.dto.pedidos.PedidoDTO;
+import com.megatech.bffservice.security.JwtUsuarioIdResolver;
 import com.megatech.bffservice.service.PedidosService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -52,6 +53,6 @@ public class PedidosController {
     }
 
     private String oidDe(Jwt jwt) {
-        return jwt.getClaimAsString("oid");
+        return JwtUsuarioIdResolver.resolver(jwt);
     }
 }
