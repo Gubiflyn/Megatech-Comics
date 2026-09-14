@@ -83,57 +83,159 @@ Megatech-Comics/
 3. Levantar el frontend: `npm install && npm run dev` desde `frontend/`.
 4. La aplicación queda disponible en `http://localhost:5173`, apuntando por defecto al `bff-service` local en `http://localhost:8080`.
 
-Comandos para presentación
+## Comandos para la presentación
 
+### 1. Levantar el frontend
+
+Ejecutar en PowerShell desde el PC:
+
+```powershell
 cd C:\proyectos\Megatech-Comics\frontend
 npm run dev
+```
 
-#Verificar servicios:
+---
+
+### 2. Verificar servicios activos en EC2
+
+```bash
 for s in megatech-bff megatech-usuarios megatech-catalogo megatech-editoriales megatech-inventario megatech-carrito megatech-pedidos megatech-pagos; do
   echo -n "$s: "
   systemctl is-active "$s"
 done
+```
 
+Todos deberían aparecer como `active`.
 
-#Ver qué puerto tiene configurado cada servicio:
+---
+
+### 3. Ver el puerto configurado de cada servicio
+
+```bash
 for s in megatech-bff megatech-usuarios megatech-catalogo megatech-editoriales megatech-inventario megatech-carrito megatech-pedidos megatech-pagos; do
   echo "===== $s ====="
   systemctl show "$s" -p ExecStart --value
 done
+```
 
+Puertos:
 
-#Comprobar que los puertos realmente están escuchando:
+- BFF: 8080
+- Usuarios: 8081
+- Catálogo: 8082
+- Editoriales: 8083
+- Inventario: 8084
+- Carrito: 8085
+- Pedidos: 8086
+- Pagos: 8087
+
+---
+
+### 4. Comprobar puertos activos
+
+```bash
 sudo ss -lntp | grep -E ':8080|:8081|:8082|:8083|:8084|:8085|:8086|:8087'
+```
 
+---
 
-#Comprobar que el BFF está funcionando:
+### 5. Comprobar estado del BFF
+
+```bash
 curl -i http://localhost:8080/actuator/health
+```
 
+Resultado esperado:
 
-#Entrar a RDS/MySQL:
+```json
+{"status":"UP"}
+```
+
+---
+
+### 6. Comprobar microservicio Catálogo
+
+Ver todos los cómics de forma ordenada:
+
+```bash
+curl -s http://localhost:8082/api/comics | python3 -m json.tool
+```
+
+Ver un cómic específico:
+
+```bash
+curl -s http://localhost:8082/api/comics/1 | python3 -m json.tool
+```
+
+---
+
+### 7. Comprobar microservicio Editoriales
+
+```bash
+curl -s http://localhost:8083/api/editoriales | python3 -m json.tool
+```
+
+---
+
+### 8. Conectarse a RDS / MySQL
+
+```bash
 DB_HOST=$(sudo sed -n 's/^RDS_HOST=//p' /etc/megatech/megatech.env)
 DB_USER=$(sudo sed -n 's/^CATALOGO_DB_USERNAME=//p' /etc/megatech/megatech.env)
 DB_PASS=$(sudo sed -n 's/^CATALOGO_DB_PASSWORD=//p' /etc/megatech/megatech.env)
 
 MYSQL_PWD="$DB_PASS" mysql -h "$DB_HOST" -P 3306 -u "$DB_USER"
+```
 
+---
 
-#Mostrar bases de datos:
+### 9. Mostrar bases de datos
+
+Ejecutar una vez dentro de MariaDB/MySQL:
+
+```sql
 SHOW DATABASES;
+```
 
+---
 
-#Ver comcis junto a su stock:
+### 10. Ver cómics junto con su stock
+
+```sql
 SELECT
-    c.id,
-    c.titulo,
-    c.precio,
-    i.stock,
-    i.stock_minimo
+    c.id AS ID,
+    c.titulo AS Comic,
+    c.precio AS Precio,
+    i.stock AS Stock,
+    i.stock_minimo AS Stock_Minimo
 FROM megatech_catalogo.comics c
 LEFT JOIN megatech_inventario.inventarios i
     ON i.producto_id = c.id
 ORDER BY c.id;
+```
 
+Esta consulta se puede ejecutar antes y después de una compra para demostrar que el stock disminuye.
 
-#Ver editoriales:
-SELECT * FROM megatech_editoriales.editoriales;
+Ejemplo:
+
+```text
+Antes de comprar:   Stock = 10
+Después de comprar: Stock = 9
+```
+
+---
+
+### 11. Ver editoriales almacenadas
+
+```sql
+SELECT *
+FROM megatech_editoriales.editoriales;
+```
+
+---
+
+### 12. Salir de MySQL
+
+```sql
+exit;
+```
