@@ -82,3 +82,58 @@ Megatech-Comics/
 2. Levantar cada microservicio: `mvn spring-boot:run` desde su carpeta respectiva.
 3. Levantar el frontend: `npm install && npm run dev` desde `frontend/`.
 4. La aplicación queda disponible en `http://localhost:5173`, apuntando por defecto al `bff-service` local en `http://localhost:8080`.
+
+Comandos para presentación
+
+cd C:\proyectos\Megatech-Comics\frontend
+npm run dev
+
+#Verificar servicios:
+for s in megatech-bff megatech-usuarios megatech-catalogo megatech-editoriales megatech-inventario megatech-carrito megatech-pedidos megatech-pagos; do
+  echo -n "$s: "
+  systemctl is-active "$s"
+done
+
+
+#Ver qué puerto tiene configurado cada servicio:
+for s in megatech-bff megatech-usuarios megatech-catalogo megatech-editoriales megatech-inventario megatech-carrito megatech-pedidos megatech-pagos; do
+  echo "===== $s ====="
+  systemctl show "$s" -p ExecStart --value
+done
+
+
+#Comprobar que los puertos realmente están escuchando:
+sudo ss -lntp | grep -E ':8080|:8081|:8082|:8083|:8084|:8085|:8086|:8087'
+
+
+#Comprobar que el BFF está funcionando:
+curl -i http://localhost:8080/actuator/health
+
+
+#Entrar a RDS/MySQL:
+DB_HOST=$(sudo sed -n 's/^RDS_HOST=//p' /etc/megatech/megatech.env)
+DB_USER=$(sudo sed -n 's/^CATALOGO_DB_USERNAME=//p' /etc/megatech/megatech.env)
+DB_PASS=$(sudo sed -n 's/^CATALOGO_DB_PASSWORD=//p' /etc/megatech/megatech.env)
+
+MYSQL_PWD="$DB_PASS" mysql -h "$DB_HOST" -P 3306 -u "$DB_USER"
+
+
+#Mostrar bases de datos:
+SHOW DATABASES;
+
+
+#Ver comcis junto a su stock:
+SELECT
+    c.id,
+    c.titulo,
+    c.precio,
+    i.stock,
+    i.stock_minimo
+FROM megatech_catalogo.comics c
+LEFT JOIN megatech_inventario.inventarios i
+    ON i.producto_id = c.id
+ORDER BY c.id;
+
+
+#Ver editoriales:
+SELECT * FROM megatech_editoriales.editoriales;
