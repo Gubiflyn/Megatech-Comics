@@ -17,8 +17,10 @@ import {
   useOrders,
 } from '../context/OrderContext'
 
-const CATALOGO_API =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
+const CATALOGO_API = `${
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8080'
+}/api/catalogo`
 
 function formatearPrecio(precio) {
   return new Intl.NumberFormat('es-CL', {

@@ -1,0 +1,54 @@
+# Copia este archivo a terraform.tfvars y completa los valores reales.
+# terraform.tfvars NO se sube a git (ver .gitignore de esta carpeta).
+
+my_ip = "TU_IP_PUBLICA_AQUI/32"
+
+service_env_vars = {
+  usuarios-service = {
+    USUARIOS_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/usuarios_db?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    USUARIOS_DB_USERNAME = "admin"
+    USUARIOS_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+
+  catalogo-service = {
+    CATALOGO_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/megatech_catalogo?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    CATALOGO_DB_USERNAME = "admin"
+    CATALOGO_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+
+  # editoriales-service: no valida JWT (no tiene la dependencia ni
+  # SecurityConfig.java), solo necesita sus 3 variables de base de datos.
+  editoriales-service = {
+    EDITORIALES_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/megatech_editoriales?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    EDITORIALES_DB_USERNAME = "admin"
+    EDITORIALES_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+
+  inventario-service = {
+    INVENTARIO_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/megatech_inventario?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    INVENTARIO_DB_USERNAME = "admin"
+    INVENTARIO_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+
+  carrito-service = {
+    CARRITO_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/megatech_carrito?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    CARRITO_DB_USERNAME = "admin"
+    CARRITO_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+
+  pedidos-service = {
+    PEDIDOS_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/megatech_pedidos?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    PEDIDOS_DB_USERNAME = "admin"
+    PEDIDOS_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+
+  # pagos-service: tiene la dependencia oauth2-resource-server pero su
+  # SecurityConfig.java actual hace anyRequest().permitAll() sin usar
+  # AZURE_ISSUER_URI/AZURE_AUDIENCE - no tiene efecto agregarlas aquí
+  # hasta que se actualice ese archivo (fuera del alcance de este cambio).
+  pagos-service = {
+    PAGOS_DB_URL      = "jdbc:mysql://megatech-db.cmnslopbnypk.us-east-1.rds.amazonaws.com:3306/megatech_pagos?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+    PAGOS_DB_USERNAME = "admin"
+    PAGOS_DB_PASSWORD = "PON_TU_PASSWORD_AQUI"
+  }
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=${service_name}
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/${service_name}
+ExecStart=/usr/bin/java -jar /opt/${service_name}/app.jar
+Restart=on-failure
+RestartSec=5
+Environment="SERVER_PORT=${port}"
+%{ for k, v in env_vars ~}
+Environment="${k}=${v}"
+%{ endfor ~}
+
+[Install]
+WantedBy=multi-user.target
