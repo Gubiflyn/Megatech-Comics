@@ -5,6 +5,8 @@ import cl.megatech.pagos.dto.PedidoResponse;
 import cl.megatech.pagos.dto.ProcesarPagoRequest;
 import cl.megatech.pagos.exception.PagoNoPermitidoException;
 import cl.megatech.pagos.exception.RecursoNoEncontradoException;
+import cl.megatech.pagos.messaging.PagoProcesadoEvent;
+import cl.megatech.pagos.messaging.PagoProcesadoPublisher;
 import cl.megatech.pagos.model.EstadoPago;
 import cl.megatech.pagos.model.MetodoPago;
 import cl.megatech.pagos.model.Pago;
@@ -19,13 +21,16 @@ public class PagoService {
 
     private final PagoRepository pagoRepository;
     private final PedidosClient pedidosClient;
+    private final PagoProcesadoPublisher pagoProcesadoPublisher;
 
     public PagoService(
             PagoRepository pagoRepository,
-            PedidosClient pedidosClient) {
+            PedidosClient pedidosClient,
+            PagoProcesadoPublisher pagoProcesadoPublisher) {
 
         this.pagoRepository = pagoRepository;
         this.pedidosClient = pedidosClient;
+        this.pagoProcesadoPublisher = pagoProcesadoPublisher;
     }
 
     @Transactional
@@ -75,6 +80,7 @@ public class PagoService {
         pago.setUsuarioId(pedido.getUsuarioId());
         pago.setMetodoPago(metodoPago);
 
+        // Pago rechazado
         if (Boolean.FALSE.equals(request.getAprobarPago())) {
 
             pago.setEstado(EstadoPago.RECHAZADO);
@@ -83,16 +89,24 @@ public class PagoService {
             return pagoRepository.save(pago);
         }
 
+        // Pago aprobado
         pago.setEstado(EstadoPago.APROBADO);
         pago.setMensaje("Pago aprobado correctamente");
 
         Pago pagoGuardado =
                 pagoRepository.save(pago);
 
-        pedidosClient.marcarComoPagado(
-                pedidoId,
-                authorizationHeader
-        );
+        // Publicar evento RabbitMQ
+        PagoProcesadoEvent evento =
+                new PagoProcesadoEvent(
+                        pagoGuardado.getId(),
+                        pagoGuardado.getPedidoId(),
+                        pagoGuardado.getUsuarioId(),
+                        pagoGuardado.getEstado().name(),
+                        pagoGuardado.getMetodoPago().name()
+                );
+
+        pagoProcesadoPublisher.publicar(evento);
 
         return pagoGuardado;
     }
