@@ -1,12 +1,10 @@
 package cl.megatech.pagos.client;
 
-import cl.megatech.pagos.dto.ActualizarEstadoRequest;
 import cl.megatech.pagos.dto.PedidoResponse;
 import cl.megatech.pagos.exception.RecursoNoEncontradoException;
 import cl.megatech.pagos.exception.ServicioExternoException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -44,13 +42,16 @@ public class PedidosClient {
                     authorizationHeader
             );
 
-            PedidoResponse pedido = request
-                    .retrieve()
-                    .body(PedidoResponse.class);
+            PedidoResponse pedido =
+                    request
+                            .retrieve()
+                            .body(PedidoResponse.class);
 
             if (pedido == null) {
+
                 throw new ServicioExternoException(
-                        "pedidos-service no entregó una respuesta válida"
+                        "pedidos-service no entregó "
+                                + "una respuesta válida"
                 );
             }
 
@@ -61,55 +62,13 @@ public class PedidosClient {
             if (ex.getStatusCode().value() == 404) {
 
                 throw new RecursoNoEncontradoException(
-                        "No existe el pedido " + pedidoId
+                        "No existe el pedido "
+                                + pedidoId
                 );
             }
 
             throw new ServicioExternoException(
                     "No fue posible consultar pedidos-service"
-            );
-        }
-    }
-
-    public PedidoResponse marcarComoPagado(
-            Long pedidoId,
-            String authorizationHeader) {
-
-        try {
-
-            RestClient.RequestBodySpec request =
-                    restClient
-                            .put()
-                            .uri(
-                                    "/api/pedidos/{pedidoId}/estado",
-                                    pedidoId
-                            )
-                            .contentType(MediaType.APPLICATION_JSON);
-
-            agregarAuthorization(
-                    request,
-                    authorizationHeader
-            );
-
-            PedidoResponse pedido = request
-                    .body(
-                            new ActualizarEstadoRequest("PAGADO")
-                    )
-                    .retrieve()
-                    .body(PedidoResponse.class);
-
-            if (pedido == null) {
-                throw new ServicioExternoException(
-                        "pedidos-service no confirmó la actualización"
-                );
-            }
-
-            return pedido;
-
-        } catch (RestClientResponseException ex) {
-
-            throw new ServicioExternoException(
-                    "No fue posible actualizar el estado del pedido"
             );
         }
     }
@@ -128,3 +87,4 @@ public class PedidosClient {
         }
     }
 }
+

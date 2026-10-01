@@ -16,32 +16,25 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class PagoRabbitConfig {
 
-    // Exchange principal
     public static final String PAGO_EXCHANGE =
             "pagos.exchange";
 
-    // Cola principal
     public static final String PAGO_PROCESADO_QUEUE =
             "pago.procesado.queue";
 
-    // Routing Key principal
     public static final String PAGO_PROCESADO_ROUTING_KEY =
             "pago.procesado";
 
-    // Dead Letter Exchange
     public static final String PAGO_DLX =
             "pagos.dlx";
 
-    // Dead Letter Queue
     public static final String PAGO_PROCESADO_DLQ =
             "pago.procesado.dlq";
 
-    // Routing Key de mensajes fallidos
     public static final String PAGO_PROCESADO_DLQ_ROUTING_KEY =
             "pago.procesado.dead";
 
 
-    // Conversor JSON para este flujo
     @Bean
     public JacksonJsonMessageConverter pagoJsonMessageConverter() {
 
@@ -49,7 +42,6 @@ public class PagoRabbitConfig {
     }
 
 
-    // Configuración específica del consumidor de pagos
     @Bean(name = "pagoRabbitListenerContainerFactory")
     public SimpleRabbitListenerContainerFactory
     pagoRabbitListenerContainerFactory(
@@ -64,22 +56,18 @@ public class PagoRabbitConfig {
 
         factory.setMessageConverter(messageConverter);
 
-        // ACK manual
         factory.setAcknowledgeMode(
                 AcknowledgeMode.MANUAL
         );
 
-        // Procesar un mensaje a la vez
         factory.setPrefetchCount(1);
 
-        // Si RabbitMQ rechaza un mensaje,
-        // no volverlo a poner infinitamente en la cola
         factory.setDefaultRequeueRejected(false);
 
         return factory;
     }
 
-    // Exchange principal
+
     @Bean
     public DirectExchange pagoExchange() {
 
@@ -90,7 +78,7 @@ public class PagoRabbitConfig {
         );
     }
 
-    // Dead Letter Exchange
+
     @Bean
     public DirectExchange pagoDeadLetterExchange() {
 
@@ -101,28 +89,24 @@ public class PagoRabbitConfig {
         );
     }
 
-    // Cola principal
+
     @Bean
     public Queue pagoProcesadoQueue() {
 
         return QueueBuilder
                 .durable(PAGO_PROCESADO_QUEUE)
-
                 .withArgument(
                         "x-dead-letter-exchange",
                         PAGO_DLX
                 )
-
                 .withArgument(
                         "x-dead-letter-routing-key",
                         PAGO_PROCESADO_DLQ_ROUTING_KEY
                 )
-
                 .build();
     }
 
 
-    // Dead Letter Queue
     @Bean
     public Queue pagoProcesadoDlq() {
 
@@ -132,10 +116,12 @@ public class PagoRabbitConfig {
     }
 
 
-    // Binding principal
     @Bean
     public Binding pagoProcesadoBinding(
+            @Qualifier("pagoProcesadoQueue")
             Queue pagoProcesadoQueue,
+
+            @Qualifier("pagoExchange")
             DirectExchange pagoExchange) {
 
         return BindingBuilder
@@ -145,10 +131,12 @@ public class PagoRabbitConfig {
     }
 
 
-    // Binding DLQ
     @Bean
     public Binding pagoProcesadoDlqBinding(
+            @Qualifier("pagoProcesadoDlq")
             Queue pagoProcesadoDlq,
+
+            @Qualifier("pagoDeadLetterExchange")
             DirectExchange pagoDeadLetterExchange) {
 
         return BindingBuilder

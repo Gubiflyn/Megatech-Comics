@@ -1,6 +1,7 @@
 package cl.megatech.pedidos.messaging;
 
 import cl.megatech.pedidos.config.PagoRabbitConfig;
+import cl.megatech.pedidos.exception.RecursoNoEncontradoException;
 import cl.megatech.pedidos.service.PedidoService;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
@@ -18,6 +19,8 @@ public class PagoProcesadoConsumer {
             LoggerFactory.getLogger(
                     PagoProcesadoConsumer.class
             );
+
+    private static final int MAX_REINTENTOS = 3;
 
     private final PedidoService pedidoService;
 
@@ -43,34 +46,10 @@ public class PagoProcesadoConsumer {
 
         try {
 
-            LOGGER.info(
-                    "Mensaje pago.procesado recibido. "
-                            + "pagoId={}, pedidoId={}, estado={}",
-                    evento.getPagoId(),
-                    evento.getPedidoId(),
-                    evento.getEstado()
-            );
+            validarEvento(evento);
 
-            // Seguridad adicional:
-            // solamente un pago aprobado puede
-            // marcar un pedido como PAGADO.
-            if (!"APROBADO".equalsIgnoreCase(
-                    evento.getEstado())) {
+            procesarConReintentos(evento);
 
-                throw new IllegalArgumentException(
-                        "El evento recibido no corresponde "
-                                + "a un pago aprobado"
-                );
-            }
-
-            // Actualizar el pedido
-            pedidoService.actualizarEstado(
-                    evento.getPedidoId(),
-                    "PAGADO"
-            );
-
-            // ACK
-            // El mensaje se procesó correctamente
             channel.basicAck(
                     deliveryTag,
                     false
@@ -81,26 +60,142 @@ public class PagoProcesadoConsumer {
                     evento.getPedidoId()
             );
 
-        } catch (Exception ex) {
+        } catch (RecursoNoEncontradoException
+                 | IllegalArgumentException ex) {
 
             LOGGER.error(
-                    "Error procesando pago.procesado "
+                    "Error no recuperable procesando pago.procesado "
                             + "para pedido {}. "
-                            + "El mensaje será enviado a la DLQ.",
-                    evento.getPedidoId(),
+                            + "El mensaje será enviado directamente "
+                            + "a la DLQ.",
+                    evento != null
+                            ? evento.getPedidoId()
+                            : null,
                     ex
             );
 
-            // NACK
-            // requeue = false
-            //
-            // El mensaje no vuelve a la cola principal.
-            // RabbitMQ lo enviará al DLX y luego a la DLQ.
+            channel.basicNack(
+                    deliveryTag,
+                    false,
+                    false
+            );
+
+        } catch (Exception ex) {
+
+            LOGGER.error(
+                    "El mensaje pago.procesado no pudo procesarse "
+                            + "después de {} intentos para pedido {}. "
+                            + "Será enviado a la DLQ.",
+                    MAX_REINTENTOS,
+                    evento != null
+                            ? evento.getPedidoId()
+                            : null,
+                    ex
+            );
+
             channel.basicNack(
                     deliveryTag,
                     false,
                     false
             );
         }
+    }
+
+    private void validarEvento(
+            PagoProcesadoEvent evento) {
+
+        if (evento == null) {
+
+            throw new IllegalArgumentException(
+                    "El evento pago.procesado no puede ser nulo"
+            );
+        }
+
+        if (evento.getPagoId() == null) {
+
+            throw new IllegalArgumentException(
+                    "El pagoId es obligatorio"
+            );
+        }
+
+        if (evento.getPedidoId() == null) {
+
+            throw new IllegalArgumentException(
+                    "El pedidoId es obligatorio"
+            );
+        }
+
+        if (evento.getEstado() == null
+                || evento.getEstado().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "El estado del pago es obligatorio"
+            );
+        }
+
+        if (!"APROBADO".equalsIgnoreCase(
+                evento.getEstado())) {
+
+            throw new IllegalArgumentException(
+                    "El evento recibido no corresponde "
+                            + "a un pago aprobado"
+            );
+        }
+    }
+
+    private void procesarConReintentos(
+            PagoProcesadoEvent evento) {
+
+        RuntimeException ultimoError = null;
+
+        for (int intento = 1;
+             intento <= MAX_REINTENTOS;
+             intento++) {
+
+            try {
+
+                LOGGER.info(
+                        "Procesando pago.procesado. "
+                                + "pagoId={}, pedidoId={}, "
+                                + "intento={}/{}",
+                        evento.getPagoId(),
+                        evento.getPedidoId(),
+                        intento,
+                        MAX_REINTENTOS
+                );
+
+                pedidoService.actualizarEstado(
+                        evento.getPedidoId(),
+                        "PAGADO"
+                );
+
+                return;
+
+            } catch (RecursoNoEncontradoException
+                     | IllegalArgumentException ex) {
+
+                throw ex;
+
+            } catch (RuntimeException ex) {
+
+                ultimoError = ex;
+
+                LOGGER.warn(
+                        "Error temporal procesando pedido {}. "
+                                + "Intento {}/{} fallido.",
+                        evento.getPedidoId(),
+                        intento,
+                        MAX_REINTENTOS,
+                        ex
+                );
+            }
+        }
+
+        throw ultimoError != null
+                ? ultimoError
+                : new IllegalStateException(
+                        "No fue posible procesar "
+                                + "el evento pago.procesado"
+                );
     }
 }
