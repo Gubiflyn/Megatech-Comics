@@ -1,0 +1,76 @@
+services:
+
+  rabbitmq-1:
+    image: rabbitmq:4.2-management
+    container_name: rabbitmq-1
+    hostname: rabbitmq-1
+
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-1
+      RABBITMQ_ERLANG_COOKIE: MEGATECH_RABBITMQ_CLUSTER_2026
+      RABBITMQ_DEFAULT_USER: megatech
+      RABBITMQ_DEFAULT_PASS: megatech123
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    volumes:
+      - rabbitmq1_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+    networks:
+      - rabbitmq-cluster
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
+
+  rabbitmq-2:
+    image: rabbitmq:4.2-management
+    container_name: rabbitmq-2
+    hostname: rabbitmq-2
+
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-2
+      RABBITMQ_ERLANG_COOKIE: MEGATECH_RABBITMQ_CLUSTER_2026
+      RABBITMQ_DEFAULT_USER: megatech
+      RABBITMQ_DEFAULT_PASS: megatech123
+
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+
+    volumes:
+      - rabbitmq2_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+    networks:
+      - rabbitmq-cluster
+
+    depends_on:
+      rabbitmq-1:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
+
+volumes:
+  rabbitmq1_data:
+  rabbitmq2_data:
+
+
+networks:
+  rabbitmq-cluster:
+    driver: bridge
