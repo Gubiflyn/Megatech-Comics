@@ -3,10 +3,14 @@ package cl.megatech.inventario.service;
 import cl.megatech.inventario.dto.InventarioRequest;
 import cl.megatech.inventario.exception.RecursoNoEncontradoException;
 import cl.megatech.inventario.exception.StockInsuficienteException;
+import cl.megatech.inventario.messaging.StockActualizadoEvent;
+import cl.megatech.inventario.messaging.StockActualizadoProducer;
 import cl.megatech.inventario.model.Inventario;
 import cl.megatech.inventario.repository.InventarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
@@ -15,11 +19,14 @@ import java.util.Map;
 public class InventarioService {
 
     private final InventarioRepository inventarioRepository;
+    private final StockActualizadoProducer stockActualizadoProducer;
 
     public InventarioService(
-            InventarioRepository inventarioRepository) {
+            InventarioRepository inventarioRepository,
+            StockActualizadoProducer stockActualizadoProducer) {
 
         this.inventarioRepository = inventarioRepository;
+        this.stockActualizadoProducer = stockActualizadoProducer;
     }
 
     public List<Inventario> listarTodos() {
@@ -171,12 +178,30 @@ public class InventarioService {
                             item.getKey()
                     );
 
+            Integer stockAnterior = inventario.getStock();
+
             inventario.setStock(
-                    inventario.getStock()
+                    stockAnterior
                             - item.getValue()
             );
 
             inventarioRepository.save(inventario);
+
+            StockActualizadoEvent evento = new StockActualizadoEvent(
+                    item.getKey(),
+                    stockAnterior,
+                    inventario.getStock(),
+                    "PEDIDO"
+            );
+
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            stockActualizadoProducer.publicar(evento);
+                        }
+                    }
+            );
         }
     }
 }
