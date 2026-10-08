@@ -30,9 +30,10 @@ public class PedidoCreadoConsumer {
     }
 
     @RabbitListener(
-            queues = PedidoRabbitConfig.PEDIDO_CREADO_QUEUE,
-            containerFactory = "pedidoRabbitListenerContainerFactory"
-    )
+        id = "pedido-creado-listener",
+        queues = PedidoRabbitConfig.PEDIDO_CREADO_QUEUE,
+        containerFactory = "pedidoRabbitListenerContainerFactory"
+)
     public void consumir(
             PedidoCreadoEvent evento,
             Message message,
