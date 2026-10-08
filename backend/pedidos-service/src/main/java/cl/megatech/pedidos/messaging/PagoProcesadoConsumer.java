@@ -31,9 +31,10 @@ public class PagoProcesadoConsumer {
     }
 
     @RabbitListener(
-            queues = PagoRabbitConfig.PAGO_PROCESADO_QUEUE,
-            containerFactory = "pagoRabbitListenerContainerFactory"
-    )
+        id = "pago-procesado-listener",
+        queues = PagoRabbitConfig.PAGO_PROCESADO_QUEUE,
+        containerFactory = "pagoRabbitListenerContainerFactory"
+)
     public void consumir(
             PagoProcesadoEvent evento,
             Message message,
