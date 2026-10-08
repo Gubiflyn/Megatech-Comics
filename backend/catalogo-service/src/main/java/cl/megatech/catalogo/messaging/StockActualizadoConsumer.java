@@ -19,7 +19,10 @@ public class StockActualizadoConsumer {
                     StockActualizadoConsumer.class
             );
 
-    @RabbitListener(queues = StockRabbitConfig.STOCK_QUEUE)
+    @RabbitListener(
+        id = "stock-actualizado-listener",
+        queues = StockRabbitConfig.STOCK_QUEUE
+)
     public void consumir(
             StockActualizadoEvent evento,
             Channel channel,
