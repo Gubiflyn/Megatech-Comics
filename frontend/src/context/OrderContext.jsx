@@ -17,7 +17,7 @@ import { loginRequest } from '../auth/msalConfig'
 const OrderContext = createContext(null)
 
 const API_BASE =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api'
+  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api'
 
 export function OrderProvider({ children }) {
   const { instance, accounts } = useMsal()

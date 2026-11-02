@@ -11,7 +11,7 @@ import {
 } from '../context/OrderContext'
 
 const CATALOGO_API =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
+  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function formatearFecha(fecha) {
   if (!fecha) {

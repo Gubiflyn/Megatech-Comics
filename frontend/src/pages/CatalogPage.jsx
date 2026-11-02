@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import ComicCard from '../components/ComicCard'
 
 const API_URL =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
+  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function CatalogPage() {
   const [comics, setComics] = useState([])

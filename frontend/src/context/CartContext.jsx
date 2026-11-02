@@ -17,7 +17,7 @@ import { loginRequest } from '../auth/msalConfig'
 const CartContext = createContext(null)
 
 const API_URL =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/carrito'
+  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/carrito'
 
 export function CartProvider({ children }) {
   const { instance, accounts } = useMsal()

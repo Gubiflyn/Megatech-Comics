@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 
 const API_URL =
-  'https://os3wsgjxhh.execute-api.us-east-1.amazonaws.com/api/catalogo'
+  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function ComicDetailPage() {
   const { id } = useParams()
