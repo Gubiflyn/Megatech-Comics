@@ -1,0 +1,15 @@
+# Instalar como /etc/nginx/conf.d/megatech.conf en Amazon Linux 2023.
+# Solo para comprobar que el frontend compilado se sirve en HTTP.
+# Antes de probar el login Entra ID en una URL pública, configurar HTTPS y
+# actualizar Redirect URI (SPA) para el dominio HTTPS en Microsoft Entra ID.
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

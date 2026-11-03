@@ -1,0 +1,21 @@
+name: megatech-kafka-ui
+
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: megatech-kafka-ui
+    ports:
+      - "127.0.0.1:8088:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: megatech-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:29092,kafka-2:29093
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      DYNAMIC_CONFIG_ENABLED: "false"
+    networks:
+      - kafka-net
+    restart: unless-stopped
+
+networks:
+  kafka-net:
+    name: megatech-kafka-net
+    external: true
