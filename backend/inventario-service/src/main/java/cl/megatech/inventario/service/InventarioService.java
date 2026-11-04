@@ -3,8 +3,10 @@ package cl.megatech.inventario.service;
 import cl.megatech.inventario.dto.InventarioRequest;
 import cl.megatech.inventario.exception.RecursoNoEncontradoException;
 import cl.megatech.inventario.exception.StockInsuficienteException;
+import cl.megatech.inventario.messaging.InventarioKafkaProducer;
 import cl.megatech.inventario.messaging.StockActualizadoEvent;
 import cl.megatech.inventario.messaging.StockActualizadoProducer;
+import cl.megatech.inventario.messaging.StockKafkaEvent;
 import cl.megatech.inventario.model.Inventario;
 import cl.megatech.inventario.repository.InventarioRepository;
 import org.springframework.stereotype.Service;
@@ -12,21 +14,26 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class InventarioService {
 
     private final InventarioRepository inventarioRepository;
     private final StockActualizadoProducer stockActualizadoProducer;
+    private final InventarioKafkaProducer inventarioKafkaProducer;
 
     public InventarioService(
             InventarioRepository inventarioRepository,
-            StockActualizadoProducer stockActualizadoProducer) {
+            StockActualizadoProducer stockActualizadoProducer,
+            InventarioKafkaProducer inventarioKafkaProducer) {
 
         this.inventarioRepository = inventarioRepository;
         this.stockActualizadoProducer = stockActualizadoProducer;
+        this.inventarioKafkaProducer = inventarioKafkaProducer;
     }
 
     public List<Inventario> listarTodos() {
@@ -83,13 +90,21 @@ public class InventarioService {
         Inventario inventario =
                 obtenerPorProductoId(productoId);
 
+        int stockAnterior = inventario.getStock();
+
         inventario.setStock(request.getStock());
 
         inventario.setStockMinimo(
                 request.getStockMinimo()
         );
 
-        return inventarioRepository.save(inventario);
+        Inventario inventarioGuardado = inventarioRepository.save(inventario);
+
+        if (stockAnterior != inventarioGuardado.getStock()) {
+            publicarStockDespuesDelCommit(inventarioGuardado, stockAnterior, "AJUSTE_MANUAL", null);
+        }
+
+        return inventarioGuardado;
     }
 
     @Transactional
@@ -112,11 +127,19 @@ public class InventarioService {
             );
         }
 
+        int stockAnterior = inventario.getStock();
+
         inventario.setStock(
                 inventario.getStock() - cantidad
         );
 
-        return inventarioRepository.save(inventario);
+        Inventario inventarioGuardado = inventarioRepository.save(inventario);
+
+        if (stockAnterior != inventarioGuardado.getStock()) {
+            publicarStockDespuesDelCommit(inventarioGuardado, stockAnterior, "DESCUENTO_MANUAL", null);
+        }
+
+        return inventarioGuardado;
     }
 
     @Transactional
@@ -127,11 +150,19 @@ public class InventarioService {
         Inventario inventario =
                 obtenerPorProductoId(productoId);
 
+        int stockAnterior = inventario.getStock();
+
         inventario.setStock(
                 inventario.getStock() + cantidad
         );
 
-        return inventarioRepository.save(inventario);
+        Inventario inventarioGuardado = inventarioRepository.save(inventario);
+
+        if (stockAnterior != inventarioGuardado.getStock()) {
+            publicarStockDespuesDelCommit(inventarioGuardado, stockAnterior, "REPOSICION", null);
+        }
+
+        return inventarioGuardado;
     }
 
     /*
@@ -194,14 +225,32 @@ public class InventarioService {
                     "PEDIDO"
             );
 
-            TransactionSynchronizationManager.registerSynchronization(
-                    new TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            stockActualizadoProducer.publicar(evento);
-                        }
-                    }
-            );
+            publicarStockDespuesDelCommit(inventario, stockAnterior, "PEDIDO", evento);
         }
+    }
+
+    private void publicarStockDespuesDelCommit(
+            Inventario inventario, int stockAnterior, String motivo,
+            StockActualizadoEvent eventoRabbit) {
+
+        int stockActual = inventario.getStock();
+        int stockMinimo = inventario.getStockMinimo();
+        StockKafkaEvent eventoKafka = new StockKafkaEvent(
+                UUID.randomUUID().toString(), "STOCK_ACTUALIZADO", inventario.getProductoId(),
+                stockAnterior, stockActual, stockMinimo, stockActual < stockMinimo,
+                motivo, Instant.now().toString()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        if (eventoRabbit != null) {
+                            stockActualizadoProducer.publicar(eventoRabbit);
+                        }
+                        inventarioKafkaProducer.publicar(eventoKafka);
+                    }
+                }
+        );
     }
 }
