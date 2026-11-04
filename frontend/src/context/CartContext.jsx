@@ -13,11 +13,11 @@ import {
 } from '@azure/msal-react'
 
 import { loginRequest } from '../auth/msalConfig'
+import { API_BASE_URL } from '../config/api'
 
 const CartContext = createContext(null)
 
-const API_URL =
-  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/carrito'
+const API_URL = `${API_BASE_URL}/api/carrito`
 
 export function CartProvider({ children }) {
   const { instance, accounts } = useMsal()

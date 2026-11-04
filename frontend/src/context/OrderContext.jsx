@@ -13,11 +13,11 @@ import {
 } from '@azure/msal-react'
 
 import { loginRequest } from '../auth/msalConfig'
+import { API_BASE_URL } from '../config/api'
 
 const OrderContext = createContext(null)
 
-const API_BASE =
-  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api'
+const API_BASE = `${API_BASE_URL}/api`
 
 export function OrderProvider({ children }) {
   const { instance, accounts } = useMsal()

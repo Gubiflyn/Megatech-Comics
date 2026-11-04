@@ -10,8 +10,9 @@ import {
   useOrders,
 } from '../context/OrderContext'
 
-const CATALOGO_API =
-  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/catalogo'
+import { API_BASE_URL } from '../config/api'
+
+const CATALOGO_API = `${API_BASE_URL}/api/catalogo`
 
 function formatearFecha(fecha) {
   if (!fecha) {

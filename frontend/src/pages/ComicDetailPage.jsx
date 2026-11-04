@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { useCart } from '../context/CartContext'
+import { API_BASE_URL } from '../config/api'
 
-const API_URL =
-  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/catalogo'
+const API_URL = `${API_BASE_URL}/api/catalogo`
 
 function ComicDetailPage() {
   const { id } = useParams()
