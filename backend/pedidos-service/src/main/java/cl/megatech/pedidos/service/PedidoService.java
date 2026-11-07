@@ -10,15 +10,21 @@ import cl.megatech.pedidos.exception.RecursoNoEncontradoException;
 import cl.megatech.pedidos.exception.StockInsuficienteException;
 import cl.megatech.pedidos.messaging.PedidoCreadoEvent;
 import cl.megatech.pedidos.messaging.PedidoCreadoProducer;
+import cl.megatech.pedidos.messaging.PedidoKafkaEvent;
+import cl.megatech.pedidos.messaging.PedidoKafkaProducer;
 import cl.megatech.pedidos.model.EstadoPedido;
 import cl.megatech.pedidos.model.ItemPedido;
 import cl.megatech.pedidos.model.Pedido;
 import cl.megatech.pedidos.repository.PedidoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PedidoService {
@@ -27,17 +33,20 @@ public class PedidoService {
     private final CarritoClient carritoClient;
     private final InventarioClient inventarioClient;
     private final PedidoCreadoProducer pedidoCreadoProducer;
+    private final PedidoKafkaProducer pedidoKafkaProducer;
 
     public PedidoService(
             PedidoRepository pedidoRepository,
             CarritoClient carritoClient,
             InventarioClient inventarioClient,
-            PedidoCreadoProducer pedidoCreadoProducer) {
+            PedidoCreadoProducer pedidoCreadoProducer,
+            PedidoKafkaProducer pedidoKafkaProducer) {
 
         this.pedidoRepository = pedidoRepository;
         this.carritoClient = carritoClient;
         this.inventarioClient = inventarioClient;
         this.pedidoCreadoProducer = pedidoCreadoProducer;
+        this.pedidoKafkaProducer = pedidoKafkaProducer;
     }
 
     @Transactional
@@ -86,6 +95,8 @@ public class PedidoService {
                 authorizationHeader
         );
 
+        publicarKafkaDespuesDelCommit(pedidoGuardado, "PEDIDO_CREADO");
+
         return pedidoGuardado;
     }
 
@@ -116,7 +127,10 @@ public class PedidoService {
             String nuevoEstado) {
 
         Pedido pedido =
-                obtenerPorId(pedidoId);
+                pedidoRepository.buscarPorIdParaActualizar(pedidoId)
+                        .orElseThrow(() -> new RecursoNoEncontradoException(
+                                "No existe el pedido " + pedidoId
+                        ));
 
         EstadoPedido estado;
 
@@ -136,9 +150,39 @@ public class PedidoService {
             );
         }
 
-        pedido.setEstado(estado);
+        boolean pasoAPagado = estado == EstadoPedido.PAGADO
+                && pedido.getEstado() != EstadoPedido.PAGADO;
 
-        return pedidoRepository.save(pedido);
+        pedido.setEstado(estado);
+        Pedido pedidoGuardado = pedidoRepository.save(pedido);
+
+        if (pasoAPagado) {
+            publicarKafkaDespuesDelCommit(pedidoGuardado, "PEDIDO_PAGADO");
+        }
+
+        return pedidoGuardado;
+    }
+
+    private void publicarKafkaDespuesDelCommit(Pedido pedido, String tipo) {
+
+        List<PedidoKafkaEvent.ItemPedido> items = pedido.getItems().stream()
+                .map(item -> new PedidoKafkaEvent.ItemPedido(
+                        item.getProductoId(), item.getCantidad()))
+                .toList();
+
+        PedidoKafkaEvent evento = new PedidoKafkaEvent(
+                UUID.randomUUID().toString(), tipo, pedido.getId(),
+                pedido.getUsuarioId(), items, Instant.now().toString()
+        );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        pedidoKafkaProducer.publicar(evento);
+                    }
+                }
+        );
     }
 
     private void validarStockCompleto(
