@@ -30,9 +30,9 @@ public class InventarioMovimientosConsumer {
     }
 
     @KafkaListener(
-            topics = "inventario.movimientos",
-            groupId = "analitica-stock"
-    )
+        topics = "inventario.eventos",
+        groupId = "analitica-stock"
+)
     public void consumir(ConsumerRecord<String, String> record) {
 
         LOGGER.info(
@@ -52,7 +52,7 @@ public class InventarioMovimientosConsumer {
             );
         } catch (JacksonException ex) {
             throw new IllegalArgumentException(
-                    "JSON invalido en inventario.movimientos",
+                    "JSON invalido en inventario.eventos",
                     ex
             );
         }
