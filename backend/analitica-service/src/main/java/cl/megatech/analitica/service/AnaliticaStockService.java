@@ -64,6 +64,12 @@ public class AnaliticaStockService {
                 evento.eventoId().isBlank()) {
             throw new IllegalArgumentException("eventoId obligatorio");
         }
+        
+        if (!"STOCK_ACTUALIZADO".equals(evento.tipo())) {
+            throw new IllegalArgumentException(
+                    "Tipo de evento invalido. Se esperaba STOCK_ACTUALIZADO"
+            );
+        }
 
         if (evento.productoId() == null ||
                 evento.productoId() <= 0) {
