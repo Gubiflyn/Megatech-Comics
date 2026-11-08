@@ -1,6 +1,8 @@
 package cl.megatech.kafkaadmin.service;
 
+import cl.megatech.kafkaadmin.config.KafkaTopicNames;
 import cl.megatech.kafkaadmin.dto.CrearTopicoRequest;
+import cl.megatech.kafkaadmin.exception.ConfiguracionInvalidaException;
 import cl.megatech.kafkaadmin.exception.KafkaNoDisponibleException;
 import cl.megatech.kafkaadmin.exception.RecursoYaExisteException;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -13,8 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -80,6 +80,15 @@ class KafkaAdminServiceTest {
         );
 
         service.crearTopico(request);
+    }
+
+    @Test
+    void eliminarTopico_sobreTopicoProtegido_lanzaConfiguracionInvalida() {
+
+        KafkaAdminService service = new KafkaAdminService(adminClient);
+
+        assertThatThrownBy(() -> service.eliminarTopico(KafkaTopicNames.PEDIDOS_EVENTOS))
+                .isInstanceOf(ConfiguracionInvalidaException.class);
     }
 
 }

@@ -10,6 +10,7 @@ import cl.megatech.kafkaadmin.dto.LagTopicoParticion;
 import cl.megatech.kafkaadmin.dto.MiembroConsumerGroup;
 import cl.megatech.kafkaadmin.dto.ParticionInfo;
 import cl.megatech.kafkaadmin.dto.TopicoInfoResponse;
+import cl.megatech.kafkaadmin.config.KafkaTopicNames;
 import cl.megatech.kafkaadmin.exception.ConfiguracionInvalidaException;
 import cl.megatech.kafkaadmin.exception.KafkaNoDisponibleException;
 import cl.megatech.kafkaadmin.exception.RecursoNoEncontradoException;
@@ -68,6 +69,16 @@ public class KafkaAdminService {
 
     private static final Set<String> CLEANUP_POLICIES_VALIDAS = Set.of(
             "delete", "compact", "compact,delete"
+    );
+
+    // Tópicos de negocio que usa el sistema en producción: no se pueden
+    // eliminar por esta API aunque la petición esté autenticada, para
+    // evitar borrarlos por error (ver KafkaTopicsConfig).
+    private static final Set<String> TOPICOS_PROTEGIDOS = Set.of(
+            KafkaTopicNames.PEDIDOS_EVENTOS,
+            KafkaTopicNames.INVENTARIO_EVENTOS,
+            KafkaTopicNames.PEDIDOS_EVENTOS_DLT,
+            KafkaTopicNames.INVENTARIO_EVENTOS_DLT
     );
 
     private final AdminClient adminClient;
@@ -200,6 +211,13 @@ public class KafkaAdminService {
         if (nombre.startsWith("__")) {
             throw new ConfiguracionInvalidaException(
                     "No se pueden eliminar tópicos internos de Kafka"
+            );
+        }
+
+        if (TOPICOS_PROTEGIDOS.contains(nombre)) {
+            throw new ConfiguracionInvalidaException(
+                    "El tópico '" + nombre + "' es un tópico de negocio del sistema "
+                            + "y no puede eliminarse por esta API"
             );
         }
 

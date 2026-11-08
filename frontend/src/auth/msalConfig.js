@@ -6,8 +6,14 @@ export const msalConfig = {
     clientId: '8df25ac7-e8c9-41fc-a9f8-7fa1e8940f1e',
     authority:
       'https://login.microsoftonline.com/f296b836-9dcb-49b9-ab6c-8e74696608f6',
-    redirectUri: window.location.origin,
-    postLogoutRedirectUri: window.location.origin,
+    redirectUri:
+      window.location.hostname === 'localhost'
+        ? 'http://localhost:5173'
+        : 'https://54-204-203-32.nip.io/',
+    postLogoutRedirectUri:
+      window.location.hostname === 'localhost'
+        ? 'http://localhost:5173'
+        : 'https://54-204-203-32.nip.io/',
   },
   cache: {
     cacheLocation: 'localStorage',

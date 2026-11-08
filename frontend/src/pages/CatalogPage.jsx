@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import ComicCard from '../components/ComicCard'
-import { API_BASE_URL } from '../config/api'
 
-const API_URL = `${API_BASE_URL}/api/catalogo`
+const API_URL =
+  'https://szja4vfojd.execute-api.us-east-1.amazonaws.com/api/catalogo'
 
 function CatalogPage() {
   const [comics, setComics] = useState([])

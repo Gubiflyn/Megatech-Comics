@@ -9,6 +9,13 @@ import org.springframework.kafka.config.TopicBuilder;
 // Tópicos provisionados al arrancar. Spring Boot los crea mediante el
 // KafkaAdmin autoconfigurado (independiente del AdminClient de nuestra API
 // REST), por eso basta con exponerlos como beans NewTopic.
+//
+// En AWS los 4 tópicos ya existen con 3 particiones y 3 réplicas (3 brokers);
+// estos beans quedan alineados a esa topología para no generar un mismatch
+// cuando el servicio arranca contra el clúster real (si el tópico ya existe,
+// Spring Boot no lo recrea ni lo modifica, solo lo detecta).
+// Local (infra/kafka, 2 brokers) usa el mismo factor de replicación vía
+// KAFKA_TOPIC_REPLICATION_FACTOR; en AWS esa variable se fija en 3.
 @Configuration
 public class KafkaTopicsConfig {
 
@@ -62,9 +69,10 @@ public class KafkaTopicsConfig {
     public NewTopic pedidosEventosDlt() {
 
         return TopicBuilder.name(KafkaTopicNames.PEDIDOS_EVENTOS_DLT)
-                // 1 partición: el volumen de mensajes fallidos es bajo y no
-                // necesita paralelismo; simplifica la inspección manual.
-                .partitions(1)
+                // 3 particiones: igual que el tópico de origen (alineado con
+                // la topología real en AWS), aunque el volumen de mensajes
+                // fallidos sea bajo.
+                .partitions(3)
                 .replicas(factorReplicacion)
                 .config("cleanup.policy", "delete")
                 // 30 días: tiempo de margen para que el equipo investigue los
@@ -77,7 +85,7 @@ public class KafkaTopicsConfig {
     public NewTopic inventarioEventosDlt() {
 
         return TopicBuilder.name(KafkaTopicNames.INVENTARIO_EVENTOS_DLT)
-                .partitions(1)
+                .partitions(3)
                 .replicas(factorReplicacion)
                 .config("cleanup.policy", "delete")
                 .config("retention.ms", "2592000000")
